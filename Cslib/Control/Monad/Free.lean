@@ -23,13 +23,13 @@ The leaves (`FreeM.pure`) represent completed computations with final results.
 A key insight is that `FreeM F` satisfies the **universal property of free monads**: for any monad
 `M` and effect handler `f : F → M`, there exists a unique way to interpret `FreeM F` computations
 in `M` that respects the effect semantics given by `f`.
-This unique interpreter is `FreeM.liftM f`, which acts as the canonical **fold** for free monads.
+This unique interpreter is `FreeM.liftM f`
 
 
 ## Main Definitions
 
 - `FreeM`: The free monad construction
-- `FreeM.liftM`: The canonical fold/interpreter satisfying the universal property
+- `FreeM.liftM`: The canonical interpreter satisfying the universal property
 - `FreeM.liftM_unique`: Proof of the universal property
 
 See the Haskell [freer-simple](https://hackage.haskell.org/package/freer-simple) library for the
