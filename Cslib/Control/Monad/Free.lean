@@ -97,7 +97,7 @@ protected theorem bind_assoc (x : FreeM F α) (f : α → FreeM F β) (g : β �
   induction x with
   | pure a => rfl
   | liftBind op cont ih =>
-    simp [FreeM.bind,  ← pure_eq_pure] at *
+    simp [FreeM.bind] at *
     simp [ih]
 
 instance : Bind (FreeM F) where bind := .bind
@@ -253,5 +253,36 @@ theorem interprets_iff (handler : {ι : Type u} → F ι → m ι) (interp : Fre
   ⟨(·.eq), fun h => h ▸ interprets_liftM _⟩
 
 end liftM
+
+section foldFreeM
+
+/-- Catamorphism for the `FreeM` monad. The unique morphism from the initial algebra
+to any other algebra of the endofunctor `FreeM F`.
+-/
+def cataFreeM {F : Type u → Type v} {α β : Type w}
+  (pureCase : α → β)
+  (bindCase : {ι : Type u} → F ι → (ι → β) → β)
+  : FreeM F α → β
+  | .pure a => pureCase a
+  | .liftBind op k => bindCase op (fun x => cataFreeM pureCase bindCase (k x))
+
+@[simp]
+theorem cataFreeM_pure {F : Type u → Type v} {α β : Type w}
+  (pureCase : α → β)
+  (bindCase : {ι : Type u} → F ι → (ι → β) → β)
+  (a : α) : cataFreeM pureCase bindCase (.pure a) = pureCase a := rfl
+
+@[simp]
+theorem cataFreeM_liftBind {F : Type u → Type v} {α β : Type w}
+  (pureCase : α → β)
+  (bindCase : {ι : Type u} → F ι → (ι → β) → β)
+  (op : F ι) (k : ι → FreeM F α) :
+    cataFreeM pureCase bindCase (.liftBind op k)
+    = bindCase op (fun x => cataFreeM pureCase bindCase (k x)) := rfl
+
+
+
+
+end foldFreeM
 
 end FreeM
