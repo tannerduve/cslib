@@ -244,7 +244,7 @@ theorem Interprets.eq {handler : {ι : Type u} → F ι → m ι} {interp : Free
     rw [liftM_liftBind, h.apply_liftBind]
     simp [ih]
 
-theorem interprets_liftM (handler : {ι : Type u} → F ι → m ι) :
+theorem Interprets.liftM (handler : {ι : Type u} → F ι → m ι) :
     Interprets handler (·.liftM handler : FreeM F α → _) where
   apply_pure _ := rfl
   apply_liftBind _ _ := rfl
@@ -255,9 +255,9 @@ The universal property of the free monad `FreeM`.
 That is, `liftM handler` is the unique interpreter that extends the effect handler `handler` to
 interpret `FreeM F` computations in a monad `m`.
 -/
-theorem interprets_iff (handler : {ι : Type u} → F ι → m ι) (interp : FreeM F α → m α) :
+theorem Interprets.iff (handler : {ι : Type u} → F ι → m ι) (interp : FreeM F α → m α) :
     Interprets handler interp ↔ interp = (·.liftM handler) :=
-  ⟨(·.eq), fun h => h ▸ interprets_liftM _⟩
+  ⟨(·.eq), fun h => h ▸ Interprets.liftM _⟩
 
 end liftM
 

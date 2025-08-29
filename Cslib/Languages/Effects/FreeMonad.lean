@@ -7,13 +7,13 @@ import Cslib.Control.Monad.Free
 import Mathlib.Tactic.Cases
 import Cslib.Control.Monad.Free.Fold
 /-!
-# Free Monad Example: Verified Interpreter
+# Verified Interpreter using Free Monads
 
-This file gives an example of free monads in use by implementing an interpreter for a
-simple effectful expression language using free monads. The language supports arithmetic,
-variables, and three effects: state, errors, and tracing.
+This file demonstrates building a verified interpreter for a simple effectful expression language
+using free monads. The language supports arithmetic, variables, and three effects: state, errors,
+and tracing.
 
-## Components
+## Key Ideas
 
 **Separation of Syntax and Semantics**: Free monads let us separate *what* we want to do
 (syntactic description of effectful computation) from *how* we want to do it (interpreting
@@ -25,7 +25,7 @@ cleanly using sum types without monad transformer complexity.
 **Formal Verification**: The separation enables proving correctness by relating
 the catamorphic interpreter to an operational semantics.
 
-## Contents
+## Components
 
 1. **Expression Language**: Simple arithmetic with variables
 2. **Effect Definitions**: State, errors, and tracing as separate effect types
@@ -35,7 +35,7 @@ the catamorphic interpreter to an operational semantics.
 6. **Operational Semantics**: Big-step semantics as an inductive relation
 7. **Correctness Proof**: Formal verification that interpreter matches semantics
 
-This example shows how free monads enable building domain-specific languages with
+This demonstrates how free monads enable building domain-specific languages with
 clean separation between syntax and semantics, enabling multiple interpretations
 (execution, analysis, verification) of the same programs.
 
@@ -245,9 +245,12 @@ def eval : Expr → FreeM Eff Int
       else
         pure (v1 / v2)
 
--- **Correctness Proofs**
+/-- Lemma: bind behavior when the first computation succeeds.
 
-/-- Helper lemmas for bind behavior -/
+If running program `p` succeeds with result `v`, environment `env'`, and trace `tr'`,
+then running `p >>= k` is equivalent to running `k v` with the updated state.
+
+This captures the expected sequential composition behavior of effectful computations. -/
 theorem runEff_bind_ok {α β}
     {p : FreeM Eff α} {k : α → FreeM Eff β}
     {env env' : Env} {tr tr' : Trace} {v : α}
@@ -264,6 +267,12 @@ theorem runEff_bind_ok {α β}
       case inl s => cases s; simp_all [effStep]
       case inr s => cases s; exact ih _ h
 
+/-- Lemma: bind behavior when the first computation fails.
+
+If running program `p` fails with error message `msg`, then running `p >>= k`
+also fails with the same error message, short-circuiting the continuation `k`.
+
+This captures the expected error propagation behavior in effectful computations. -/
 theorem runEff_bind_err {α β}
     {p : FreeM Eff α} {k : α → FreeM Eff β}
     {env : Env} {tr : Trace} {msg : String} :
@@ -279,7 +288,14 @@ theorem runEff_bind_err {α β}
       case inl s => cases s; cases h; rfl
       case inr s => cases s; exact ih _ h
 
-/-- Interpreter agrees with operational semantics -/
+/-- Main correctness theorem: interpreter soundness.
+
+If the operational semantics says that expression `e` evaluates to result `res`
+under environment `env` and trace `trace`, then running the free monad program
+`eval e` with our interpreter produces the same result.
+
+This establishes that our free monad interpreter is sound with respect to
+the reference operational semantics. -/
 theorem runEff_eval_correct (e : Expr) (env : Env) (trace : Trace)
     (res : Except String (Int × Env × Trace))
     (h : EvalRel e env trace res) :
