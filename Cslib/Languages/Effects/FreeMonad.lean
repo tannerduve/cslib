@@ -6,6 +6,7 @@ Authors: Tanner Duve
 import Cslib.Control.Monad.Free
 import Mathlib.Tactic.Cases
 import Cslib.Control.Monad.Free.Fold
+import Cslib.Languages.LambdaCalculus.LocallyNameless.Context
 /-!
 # Verified Interpreter using Free Monads
 
@@ -57,8 +58,9 @@ inductive Expr where
   | add : Expr → Expr → Expr
   | div : Expr → Expr → Expr
 
-/-- Variable environment mapping variable names to integer values. -/
-abbrev Env := List (String × Int)
+/-- Variable environment mapping variable names to integer values.
+Uses the Context API for consistency with other language implementations in the library. -/
+abbrev Env := LambdaCalculus.LocallyNameless.Context String Int
 
 /-- State effect signature for environment manipulation.
 
@@ -123,10 +125,10 @@ If the lookup fails, it signals an error. The program combines all three
 effect types in a single computation. -/
 def exampleProgram : FreeM Eff Int := do
   log "Starting computation"
-  putEnv [("x", 10)]
+  putEnv [⟨"x", 10⟩]
   let env ← getEnv
-  match env.find? (·.fst = "x") with
-  | some (_, x) => pure (x + 1)
+  match env.find? (·.1 = "x") with
+  | some ⟨_, x⟩ => pure (x + 1)
   | none => do
       fail "x not found"
       pure 0
@@ -189,11 +191,11 @@ inductive EvalRel : Expr → Env → Trace → Except String (Int × Env × Trac
     EvalRel (.val n) env trace (.ok (n, env, trace))
 | var_found :
     ∀ x env trace v,
-    env.find? (·.fst = x) = some (x, v) →
+    env.find? (·.1 = x) = some ⟨x, v⟩ →
     EvalRel (.var x) env trace (.ok (v, env, trace))
 | var_missing :
     ∀ x env trace,
-    env.find? (·.fst = x) = none →
+    env.find? (·.1 = x) = none →
     EvalRel (.var x) env trace (.error s!"unbound variable {x}")
 | add :
     ∀ e1 e2 env trace₁ trace₂ trace₃ v1 v2 env₂ env₃,
@@ -227,8 +229,8 @@ def eval : Expr → FreeM Eff Int
   | .val n => pure n
   | .var x => do
       let env ← getEnv
-      match env.find? (·.fst = x) with
-      | some (_, v) => pure v
+      match env.find? (·.1 = x) with
+      | some ⟨_, v⟩ => pure v
       | none => do
           fail s!"unbound variable {x}"
           pure 0
