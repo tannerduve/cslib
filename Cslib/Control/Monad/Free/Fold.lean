@@ -85,7 +85,6 @@ by
     rw [foldFreeM_pure, h_pure]
   | liftBind op k ih =>
     rw [foldFreeM_liftBind, h_liftBind]
-    congr 1; ext x
-    exact ih x
+    grind
 
 end FreeM

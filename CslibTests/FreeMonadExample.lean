@@ -5,6 +5,7 @@ Authors: Tanner Duve
 -/
 import Cslib.Control.Monad.Free
 import Mathlib.Tactic.Cases
+import Cslib.Control.Monad.Free.Fold
 /-!
 # Free Monad Example: Verified Interpreter
 
@@ -40,57 +41,86 @@ clean separation between syntax and semantics, enabling multiple interpretations
 
 ## References
 
-Based on "Tutorial: A Verified Interpreter with Side Effects" demonstrating practical
+Based on "[Tutorial: A Verified Interpreter with Side Effects](https://tannerduve.github.io/blog/freer-monad/part4/)" demonstrating practical
 applications of the mathematical theory developed in the core Free monad files.
 -/
 
 open FreeM
 
--- Expression Language
+/-- Simple arithmetic expression language with integer values, variables, addition, and division.
+
+Expressions can contain literal integers, variable references, binary addition, and binary division
+(which may fail with division by zero). -/
 inductive Expr where
   | val : Int → Expr
   | var : String → Expr
   | add : Expr → Expr → Expr
   | div : Expr → Expr → Expr
 
--- Environment: variable bindings
+/-- Variable environment mapping variable names to integer values. -/
 abbrev Env := List (String × Int)
 
--- Effect Types
+/-- State effect signature for environment manipulation.
+
+Provides operations to get the current environment and put a new environment.
+This demonstrates how to encode stateful computations as effect signatures. -/
 inductive StateEff : Type → Type where
   | Get : StateEff Env
   | Put : Env → StateEff Unit
 
+/-- Error effect signature for failure with string messages.
+
+Allows computations to signal failure with descriptive error messages.
+Useful for variable lookup failures and division by zero errors. -/
 inductive ErrorEff : Type → Type where
   | Fail : String → ErrorEff Unit
 
+/-- Trace effect signature for logging string messages.
+
+Enables computations to emit log messages for debugging or audit purposes
+without affecting the main computation result. -/
 inductive TraceEff : Type → Type where
   | Log : String → TraceEff Unit
 
--- Effect Sum Types
+/-- Binary sum of effect signatures.
+
+Combines two effect signatures `F` and `G` into a single signature `F ⊕ G`.
+This enables composing multiple effects in a single computation without
+monad transformer complexity. -/
 inductive FSum (F G : Type → Type) (α : Type) where
   | inl : F α → FSum F G α
   | inr : G α → FSum F G α
 
 infixl:50 "⊕" => FSum
 
--- Combined Effect Signature
+/-- Combined effect signature supporting state, errors, and tracing.
+
+Demonstrates how multiple effect signatures can be composed using sum types.
+Computations of type `FreeM Eff α` can perform all three kinds of effects. -/
 abbrev Eff := StateEff ⊕ (ErrorEff ⊕ TraceEff)
 
--- Helper Functions for Effect Construction
+/-- Get the current environment from state. -/
 def getEnv : FreeM Eff Env :=
   lift (FSum.inl StateEff.Get)
 
+/-- Set the environment state to the given value. -/
 def putEnv (e : Env) : FreeM Eff Unit :=
   lift (FSum.inl (StateEff.Put e))
 
+/-- Signal computation failure with the given error message. -/
 def fail (msg : String) : FreeM Eff Unit :=
   lift (FSum.inr (FSum.inl (ErrorEff.Fail msg)))
 
+/-- Emit a log message to the trace. -/
 def log (msg : String) : FreeM Eff Unit :=
   lift (FSum.inr (FSum.inr (TraceEff.Log msg)))
 
--- Example Program
+/-- Example program demonstrating effect composition.
+
+This program logs a start message, sets up an environment with variable `x`,
+retrieves the environment, looks up `x`, and returns its value plus one.
+If the lookup fails, it signals an error. The program combines all three
+effect types in a single computation. -/
 def exampleProgram : FreeM Eff Int := do
   log "Starting computation"
   putEnv [("x", 10)]
@@ -101,25 +131,35 @@ def exampleProgram : FreeM Eff Int := do
       fail "x not found"
       pure 0
 
--- Interpreter Infrastructure
-
+/-- Trace log represented as a list of string messages. -/
 abbrev Trace := List String
 
--- Semantic domain: stateful computation with errors and tracing
+/-- Semantic domain for effectful computations.
+
+Represents computations that:
+- Take an initial environment and trace
+- May fail with a string error message
+- If successful, produce a result value along with updated environment and trace
+
+This is the target domain for interpreting `FreeM Eff` programs. -/
 abbrev EffAction (α : Type) := Env → Trace → Except String (α × Env × Trace)
 
--- Catamorphism for FreeM (from Free/Fold.lean but specialized here)
-def cataFreeM {F : Type u → Type v} {α β : Type w}
-  (onValue : α → β)
-  (onEffect : {ι : Type u} → F ι → (ι → β) → β)
-  : FreeM F α → β
-| .pure a => onValue a
-| .liftBind op k => onEffect op (fun x => cataFreeM onValue onEffect (k x))
+/-- Algebra component for pure values.
 
--- Algebra components for our effect domain
+Maps pure values to effectful actions that return the value unchanged
+without modifying the environment or trace. -/
 def effPure {α} (a : α) : EffAction α :=
   fun env tr => .ok (a, env, tr)
 
+/-- Algebra component for effect operations.
+
+Interprets each effect constructor into the target semantic domain:
+- `Get`: returns current environment as result
+- `Put`: updates environment state
+- `Fail`: signals error with message
+- `Log`: appends message to trace
+
+This defines the concrete semantics of each abstract effect. -/
 def effStep {α} :
     {ι : Type} → Eff ι → (ι → EffAction α) → EffAction α
   | _, .inl StateEff.Get, k => fun env tr => k env env tr
@@ -127,13 +167,22 @@ def effStep {α} :
   | _, .inr (.inl (ErrorEff.Fail msg)), _ => fun _ _ => .error msg
   | _, .inr (.inr (TraceEff.Log msg)), k => fun env tr => k () env (tr ++ [msg])
 
--- Complete interpreter via catamorphism
+/-- Catamorphic interpreter for effectful computations.
+
+Transforms a `FreeM Eff` program into a concrete effectful computation
+by folding the syntax tree using the algebra defined by `effPure` and `effStep`.
+
+This is the main interpreter that gives operational meaning to effect programs. -/
 def runEff {α} : FreeM Eff α → EffAction α :=
-  cataFreeM effPure effStep
+  foldFreeM effPure effStep
 
--- Operational Semantics
+/-- Big-step operational semantics for expression evaluation.
 
--- Big-step operational semantics as inductive relation
+Defines a relation `EvalRel e env trace result` stating that expression `e`
+evaluates to `result` when started with environment `env` and trace `trace`.
+
+This provides the "reference semantics" against which we prove our
+free monad interpreter correct -/
 inductive EvalRel : Expr → Env → Trace → Except String (Int × Env × Trace) → Prop where
 | val :
     ∀ n env trace,
@@ -164,7 +213,16 @@ inductive EvalRel : Expr → Env → Trace → Except String (Int × Env × Trac
     EvalRel e2 env₂ trace₂ (.ok (v2, env₃, trace₃)) →
     EvalRel (.div e1 e2) env trace₁ (.error "divide by zero")
 
--- Evaluator: constructs FreeM syntax trees from expressions
+/-- Expression evaluator that constructs free monad syntax trees.
+
+Transforms abstract syntax expressions into effectful computations
+represented as `FreeM` trees. This separates the program structure
+from its interpretation, enabling multiple ways to "run" the same program.
+
+The evaluator handles:
+- Variable lookup (with potential failure)
+- Arithmetic operations
+- Division by zero checking -/
 def eval : Expr → FreeM Eff Int
   | .val n => pure n
   | .var x => do
@@ -187,80 +245,52 @@ def eval : Expr → FreeM Eff Int
       else
         pure (v1 / v2)
 
--- Correctness Proofs
+-- **Correctness Proofs**
 
--- Helper lemmas for bind behavior
+/-- Helper lemmas for bind behavior -/
 theorem runEff_bind_ok {α β}
     {p : FreeM Eff α} {k : α → FreeM Eff β}
     {env env' : Env} {tr tr' : Trace} {v : α}
     (h : runEff p env tr = .ok (v, env', tr')) :
     runEff (p >>= k) env tr = runEff (k v) env' tr' := by
-  revert env env' tr tr' v
-  induction p <;> simp only [runEff, bind, cataFreeM]
-  · case pure a =>
-    intros env env' tr tr' v h
-    simp only [effPure] at h
-    injection h with a_eq
-    cases a_eq
-    rfl
-  · case liftBind ι op cont ih =>
-    intros env env' tr tr' v h
+  revert h
+  induction p generalizing env env' tr tr' v <;> simp only [runEff, bind, foldFreeM] <;> intro h
+  · case pure => cases h; rfl
+  · case liftBind _ op _ ih =>
     cases op
-    · case inl s =>
-      cases s
-      case Get => apply ih; exact h
-      case Put => apply ih; exact h
+    · case inl s => cases s <;> exact ih _ h
     · case inr s =>
       cases s
-      case inl s =>
-        cases s
-        case Fail => simp [effStep] at *
-      case inr s =>
-        cases s
-        case Log => apply ih; exact h
+      case inl s => cases s; simp_all [effStep]
+      case inr s => cases s; exact ih _ h
 
 theorem runEff_bind_err {α β}
     {p : FreeM Eff α} {k : α → FreeM Eff β}
     {env : Env} {tr : Trace} {msg : String} :
   runEff p env tr = .error msg →
   runEff (p >>= k) env tr = .error msg := by
-  revert env tr msg
-  induction p <;> simp only [runEff, bind, cataFreeM]
-  · case pure a =>
-    intros env tr msg h
-    simp [effPure] at h
-  · case liftBind ι op cont ih =>
-    intros env tr msg h
+  induction p generalizing env tr msg <;> simp only [runEff, bind, foldFreeM] <;> intro h
+  · case pure => simp [effPure] at h
+  · case liftBind _ op _ ih =>
     cases op
-    · case inl s =>
-      cases s
-      case Get => apply ih; exact h
-      case Put => apply ih; exact h
+    · case inl s => cases s <;> exact ih _ h
     · case inr s =>
       cases s
-      case inl s =>
-        cases s
-        case Fail msg' =>
-          simp only [effStep] at h
-          injection h with msg_eq
-          cases msg_eq
-          rfl
-      case inr s =>
-        cases s
-        case Log msg' => apply ih; exact h
+      case inl s => cases s; cases h; rfl
+      case inr s => cases s; exact ih _ h
 
--- Main correctness theorem: interpreter agrees with operational semantics
+/-- Interpreter agrees with operational semantics -/
 theorem runEff_eval_correct (e : Expr) (env : Env) (trace : Trace)
     (res : Except String (Int × Env × Trace))
     (h : EvalRel e env trace res) :
     runEff (eval e) env trace = res := by
     induction' h
     · case val z env trace =>
-      simp [eval, pure_eq_pure, runEff, cataFreeM, effPure]
+      simp [eval, pure_eq_pure, runEff, effPure]
     · case var_found x env trace v h =>
-      simp [runEff, eval, getEnv, lift_def, cataFreeM, effStep, h, effPure]
+      simp [runEff, eval, getEnv, lift_def, effStep, h, effPure]
     · case var_missing x env trace h =>
-      simp [runEff, eval, bind, getEnv, fail, lift_def, cataFreeM, effStep, h]
+      simp [runEff, eval, bind, getEnv, fail, lift_def, effStep, h]
     · case add e₁ e₂ env trace₁ trace₂ trace₃ v1 v2 env₂ env₃ h₁ h₂ ih₁ ih₂ =>
       simp [eval, bind]
       have step₁ := runEff_bind_ok (p := eval e₁ ) (k := fun v1 => do
@@ -268,7 +298,7 @@ theorem runEff_eval_correct (e : Expr) (env : Env) (trace : Trace)
         pure (v1 + v2)) ih₁
       simp [bind] at step₁; simp [step₁]
       have step₂ := runEff_bind_ok (p := eval e₂) (k := fun v2 => pure (v1 + v2)) ih₂
-      simp [bind] at step₂; simp [step₂]; congr
+      simp [bind] at step₂; simp [step₂]; rfl
     · case div_ok e₁ e₂ env trace₁ trace₂ trace₃ v₁ v₂ env₂ env₃ v₂_ne_0 h₁ h₂ ih₁ ih₂  =>
       simp [eval, bind]
       have step₁ := runEff_bind_ok (p := eval e₁) (k := fun v1 => do
@@ -278,7 +308,7 @@ theorem runEff_eval_correct (e : Expr) (env : Env) (trace : Trace)
       have step₂ := runEff_bind_ok (p := eval e₂) (k := fun v₂ =>
         if v₂ = 0 then do fail "divide by zero"; pure 0 else pure (v₁ / v₂)) ih₂
       simp [bind] at step₂; simp [step₂, v₂_ne_0]
-      congr
+      rfl
     · case div_zero e₁ e₂ env' trace₁ trace₂ trace₃ v₁ v₂ env₂ env₃ v₂_eq_0 h₁ h₂ ih₁ ih₂ =>
       simp [eval, bind]
       have step₁ := runEff_bind_ok (p := eval e₁) (k := fun v₁ => do
@@ -289,4 +319,4 @@ theorem runEff_eval_correct (e : Expr) (env : Env) (trace : Trace)
         if v₂ = 0 then (do fail "divide by zero"; pure 0) else pure (v₁ / v₂)) ih₂
       simp [bind] at step₂; simp [step₂, v₂_eq_0]
       simp [fail, lift, runEff]
-      congr
+      rfl
