@@ -14,8 +14,7 @@ This file defines several canonical instances on the free monad.
 
 ## Main definitions
 
-- `FreeState`, `FreeWriter`, `FreeCont`: Specific effect monads with both hand-written and
-  canonical interpreters
+- `FreeState`, `FreeWriter`, `FreeCont`: Specific effect monads
 
 ## Implementation
 
