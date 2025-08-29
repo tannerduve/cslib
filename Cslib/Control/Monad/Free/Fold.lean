@@ -10,6 +10,10 @@ import Cslib.Control.Monad.Free
 
 This file defines the fold operation for free monads and proves its universal property.
 
+In computer science terms, `foldFreeM` provides **interpreters** for effectful syntax trees.
+Given any "target algebra" (a type with handlers for values and effects), `foldFreeM`
+constructs the unique interpreter that transforms `FreeM` programs into that target.
+
 The theory is based on the fact that `FreeM F α` is the initial algebra for a specific functor, and
 `foldFreeM` provides the unique way to eliminate free monad computations into any
 algebra of this functor.

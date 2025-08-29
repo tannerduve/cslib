@@ -9,16 +9,20 @@ import Mathlib.Tactic.SimpRw
 /-!
 # Free Monad
 
-This file defines a general `FreeM` monad construction.
+This file defines a general `FreeM` monad construction for representing effectful programs
+as pure syntax trees, separate from their interpretation.
 
 The `FreeM` monad generates a free monad from any type constructor `f : Type → Type`, without
 requiring `f` to be a `Functor`. This implementation uses the "freer monad" approach as the
 traditional free monad is not safely definable in Lean due to termination checking.
 
-In this construction, computations are represented as **trees of effects**.
+In this construction, **effectful programs are represented as trees of effects**.
 Each node (`FreeM.liftBind`) represents a request to perform an effect, accompanied by a
 continuation specifying how the computation proceeds after the effect.
 The leaves (`FreeM.pure`) represent completed computations with final results.
+
+This separation of syntax from semantics enables multiple interpretations of the same program:
+execution, static analysis, optimization, pretty-printing, verification, and more.
 
 A key insight is that `FreeM F` satisfies the **universal property of free monads**: for any monad
 `M` and effect handler `f : F → M`, there exists a unique way to interpret `FreeM F` computations
@@ -32,6 +36,8 @@ This unique interpreter is `FreeM.liftM f`
 - `FreeM.liftM`: The canonical interpreter satisfying the universal property
 - `FreeM.liftM_unique`: Proof of the universal property
 
+For elimination and interpretation theory, see `Free/Fold.lean`.
+
 See the Haskell [freer-simple](https://hackage.haskell.org/package/freer-simple) library for the
 Haskell implementation that inspired this approach.
 
@@ -44,9 +50,10 @@ and `LawfulMonad` instances.
 For now we choose to make the constructors the simp-normal form, as opposed to the standard
 monad notation.
 
-In a downstream file, the monads `FreeState`, `FreeWriter`, and `FreeCont` are built by supplying
-appropriate effect type constructors to the `FreeM` constructor.
-They are equipped with interpreters and helper functions.
+The file `Free/Effects.lean` demonstrates practical applications by implementing State, Writer, and
+Continuations monads using `FreeM` with appropriate effect signatures.
+
+The file `Free/Fold.lean` provides the theory of the fold operation for free monads.
 
 ## References
 
