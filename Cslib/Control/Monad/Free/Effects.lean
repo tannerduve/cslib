@@ -209,7 +209,7 @@ The canonical interpreter `toWriterT` derived from `liftM` agrees with the hand-
 recursive interpreter `run` for `FreeWriter`.
 -/
 @[simp]
-theorem run_toWriterT {α: Type u} [Monoid ω] :
+theorem run_toWriterT {α : Type u} [Monoid ω] :
     ∀ comp : FreeWriter ω α, (toWriterT comp).run = run comp
   | .pure _ => by simp only [toWriterT, liftM_pure, run_pure, pure, WriterT.run]
   | liftBind (.tell w) cont => by
