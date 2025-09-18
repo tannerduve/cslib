@@ -129,12 +129,6 @@ def biorthogonalClosure [PhaseSpace M] : ClosureOperator (Set M) := {
     simp [triple_orth (X := X⫠)]
 }
 
-lemma univ_closed [PhaseSpace M] :
-    (univ : Set M) = univ⫠⫠ := by
-  symm
-  simpa [top_eq_univ]
-    using ClosureOperator.closure_top (CLL.PhaseSpace.biorthogonalClosure (M:=M))
-
 -- ## Facts
 
 /--
@@ -153,6 +147,12 @@ instance [PhaseSpace M] : Coe (Fact M) (Set M) := ⟨Subtype.val⟩
     ((⟨X, h⟩ : Fact M) : Set M) = X := rfl
 
 @[simp] lemma closed [PhaseSpace M] (F : Fact M) : isFact (F : Set M) := F.property
+
+lemma univ_closed [PhaseSpace M] :
+    isFact (univ : Set M) := by
+  rw [isFact]; symm
+  simpa [top_eq_univ]
+    using ClosureOperator.closure_top (CLL.PhaseSpace.biorthogonalClosure (M:=M))
 
 /--
 A set is a fact if and only if it is the orthogonal of some set
