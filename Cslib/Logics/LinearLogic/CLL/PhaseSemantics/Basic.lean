@@ -148,7 +148,7 @@ instance [PhaseSpace M] : Coe (Fact M) (Set M) := ⟨Subtype.val⟩
 
 @[simp] lemma closed [PhaseSpace M] (F : Fact M) : isFact (F : Set M) := F.property
 
-lemma univ_closed [PhaseSpace M] :
+lemma top_isFact [PhaseSpace M] :
     isFact (univ : Set M) := by
   rw [isFact]; symm
   simpa [top_eq_univ]
@@ -274,7 +274,7 @@ theorem interp_closed [PhaseSpace M] (v : Atom → Fact M) :
   · case atom x =>
     simpa [isFact] using (v x).property
   · case one => exact oneSet_isFact
-  · case top => exact univ_closed
+  · case top => exact top_isFact
   · case _ X Y ih₁ ih₂ => exact inter_isFact_of_isFact ih₁ ih₂
 
 /--
