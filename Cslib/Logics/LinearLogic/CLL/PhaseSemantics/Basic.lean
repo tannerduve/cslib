@@ -79,7 +79,7 @@ The orthogonal `X⫠` of a set X: the set of elements that map X into ⊥ under 
 -/
 def orthogonal [PhaseSpace M] (X : Set M) : Set M := X ⊸ bot
 
-scoped postfix:max "⫠" => orthogonal
+@[inherit_doc] scoped postfix:max "⫠" => orthogonal
 
 -- ## Properties of orthogonality
 
