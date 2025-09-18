@@ -232,7 +232,6 @@ lemma oneSet_isFact [PhaseSpace M] : isFact (oneSet : Set M) := by
 
 /--
 The set I of idempotents that "belong to 1" in the phase semantics.
-Used in the interpretation of exponential connectives.
 -/
 def I [PhaseSpace M] : Set M := idempotentsIn (oneSet : Set M)
 
