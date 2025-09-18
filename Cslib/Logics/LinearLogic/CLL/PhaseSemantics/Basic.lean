@@ -6,6 +6,7 @@ Authors: Tanner Duve
 import Aesop
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Data.Set.Basic
+import Aesop
 import Mathlib.Order.Closure
 import Mathlib.Algebra.Group.Pointwise.Set.Basic
 import Cslib.Logics.LinearLogic.CLL.Basic
@@ -105,7 +106,7 @@ def biorthogonalClosure [PhaseSpace M] : ClosureOperator (Set M) := {
 }
 
 lemma univ_closed [PhaseSpace M] :
-    (Set.univ : Set M) = biorthogonalClosure univ := by
+    (univ : Set M) = univ⫠⫠ := by
   symm
   simpa [top_eq_univ]
     using ClosureOperator.closure_top (CLL.PhaseSpace.biorthogonalClosure (M:=M))
@@ -121,9 +122,9 @@ The type of facts in a phase space
 abbrev Fact (M : Type u) [PhaseSpace M] := { X : Set M // isFact X }
 
 instance [PhaseSpace M] : Coe (Fact M) (Set M) := ⟨Subtype.val⟩
-@[simp] lemma coe_mk [PhaseSpace M] {X : Set M} {h : isFact (M := M) X} :
+@[simp] lemma coe_mk [PhaseSpace M] {X : Set M} {h : isFact X} :
     ((⟨X, h⟩ : Fact M) : Set M) = X := rfl
-@[simp] lemma closed [PhaseSpace M] (F : Fact M) : isFact (M := M) (F : Set M) := F.property
+@[simp] lemma closed [PhaseSpace M] (F : Fact M) : isFact (F : Set M) := F.property
 
 /--
 A set is a fact if and only if it is of the form `Y⫠` for some `Y`.
@@ -170,8 +171,12 @@ def idems [Monoid M] : Set M := {m | m * m = m}
 
 def idemsIn [Monoid M] (X : Set M) : Set M := {m | m ∈ idems ∧ m ∈ X}
 
-/-- interpretation of `1` as a constant set (not via recursion) -/
+/-- interpretation of `1` -/
 def oneSet [PhaseSpace M] : Set M := ({1} : Set M)⫠⫠
+
+lemma oneSet_isFact [PhaseSpace M] :
+    isFact (oneSet : Set M) := by
+  simp [oneSet, isFact, triple_orth]
 
 /-- the set `I` of idempotents that “belong to 1” -/
 def I [PhaseSpace M] : Set M := idemsIn (oneSet : Set M)
@@ -185,7 +190,7 @@ def interp [PhaseSpace M] (v : Atom → Fact M) : Proposition Atom → Set M
   | .one          => oneSet
   | .zero         => (∅ : Set M)⫠⫠
   | .top          => (Set.univ : Set M)
-  | .bot          => (PhaseSpace.bot : Set M)
+  | .bot          => oneSet⫠
   | .tensor X Y   => ((interp v X) * (interp v Y))⫠⫠
   | .parr    X Y   => (((interp v X)⫠) * ((interp v Y)⫠))⫠
   | .oplus  X Y   => ((interp v X) ∪ (interp v Y))⫠⫠
@@ -239,6 +244,20 @@ lemma inter_isFact_of_isFact [PhaseSpace M] {A B : Set M}
   have : isFact (sInf ({A,B} : Set (Set M))) := sInf_isFact (by
     intro X hX; rcases hX with rfl | rfl | _; simp [hA]; simp [hB])
   simpa [sInf_insert, sInf_singleton, inf_eq_inter] using this
+
+/--
+The interpretation of a proposition in a phase space is a fact
+-/
+theorem interp_closed
+    [PhaseSpace M]
+    (v : Atom → Fact M) :
+    isFact (⟦P⟧v) := by
+  induction P <;> simp only [interp, isFact, triple_orth]
+  · case atom x =>
+    simpa [isFact] using (v x).property
+  · case one => exact oneSet_isFact
+  · case top => exact univ_closed
+  · case _ X Y ih₁ ih₂ => exact inter_isFact_of_isFact ih₁ ih₂
 
 end PhaseSpace
 
