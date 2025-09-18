@@ -143,7 +143,7 @@ abbrev Fact (M : Type u) [PhaseSpace M] := { X : Set M // isFact X }
 
 instance [PhaseSpace M] : Coe (Fact M) (Set M) := ⟨Subtype.val⟩
 
-@[simp] lemma coe_mk [PhaseSpace M] {X : Set M} {h : isFact X} :
+lemma coe_mk [PhaseSpace M] {X : Set M} {h : isFact X} :
     ((⟨X, h⟩ : Fact M) : Set M) = X := rfl
 
 @[simp] lemma closed [PhaseSpace M] (F : Fact M) : isFact (F : Set M) := F.property
@@ -218,15 +218,9 @@ lemma inter_isFact_of_isFact [PhaseSpace M] {A B : Set M}
   simpa [sInf_insert, sInf_singleton, inf_eq_inter] using this
 
 /--
-The set of idempotent elements in a monoid: elements m such that m * m = m.
--/
-abbrev idempotents [Monoid M] : Set M :=
-  {m | IsIdempotentElem m}
-
-/--
 The idempotent elements within a given set X.
 -/
-def idempotentsIn [Monoid M] (X : Set M) : Set M := {m | m ∈ idempotents ∧ m ∈ X}
+def idempotentsIn [Monoid M] (X : Set M) : Set M := {m | IsIdempotentElem m ∧ m ∈ X}
 
 /--
 The interpretation of the multiplicative unit 1: the biorthogonal closure of {1}.
