@@ -148,7 +148,7 @@ lemma coe_mk [PhaseSpace M] {X : Set M} {h : isFact X} :
 
 @[simp] lemma closed [PhaseSpace M] (F : Fact M) : isFact (F : Set M) := F.property
 
-lemma top_isFact [PhaseSpace M] :
+@[simp] lemma top_isFact [PhaseSpace M] :
     isFact (univ : Set M) := by
   rw [isFact]; symm
   simpa [top_eq_univ]
@@ -227,7 +227,7 @@ The interpretation of the multiplicative unit 1: the biorthogonal closure of {1}
 -/
 def oneSet [PhaseSpace M] : Set M := ({1} : Set M)⫠⫠
 
-lemma oneSet_isFact [PhaseSpace M] : isFact (oneSet : Set M) := by
+@[simp] lemma oneSet_isFact [PhaseSpace M] : isFact (oneSet : Set M) := by
   simp [oneSet, isFact, triple_orth]
 
 /--
