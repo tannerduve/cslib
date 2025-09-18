@@ -71,7 +71,7 @@ lemma orth_antitone [PhaseSpace M] {X Y : Set M} (hXY : X ⊆ Y) :
 /--
 The biorthogonal operator is extensive
 -/
-lemma subset_biorthogonal [PhaseSpace M] (X : Set M) : X ⊆ X⫠⫠ := by
+lemma orthogonal_extensive [PhaseSpace M] (X : Set M) : X ⊆ X⫠⫠ := by
   intro x hx n hn
   simpa [orthogonal, imp, Set.mem_setOf, mul_comm] using hn x hx
 
@@ -85,7 +85,7 @@ lemma triple_orth [PhaseSpace M] (X : Set M) : X⫠⫠⫠ = X⫠ := by
       intro y hy
       simpa [orthogonal, imp, Set.mem_setOf, mul_comm] using hy x hxX
     exact hm x hx'
-  · apply subset_biorthogonal (X := X⫠)
+  · apply orthogonal_extensive (X := X⫠)
 
 /-- The biorthogonal closure operator on `Set M`. -/
 def biorthogonalClosure [PhaseSpace M] : ClosureOperator (Set M) := {
@@ -104,16 +104,20 @@ def biorthogonalClosure [PhaseSpace M] : ClosureOperator (Set M) := {
     simp [triple_orth (X := X⫠)]
 }
 
-lemma univ_closed [PhaseSpace M] : (Set.univ : Set M) = (Set.univ⫠)⫠ := by
-  apply le_antisymm
-  · exact subset_biorthogonal (X := (Set.univ : Set M))
-  · intro m hm
-    exact Set.mem_univ m
+lemma univ_closed [PhaseSpace M] :
+    (Set.univ : Set M) = biorthogonalClosure univ := by
+  symm
+  simpa [top_eq_univ]
+    using ClosureOperator.closure_top (CLL.PhaseSpace.biorthogonalClosure (M:=M))
+
 /--
 A fact is a subset of a phase space that is equal to its biorthogonal
 -/
 def isFact [PhaseSpace M] (X : Set M) : Prop := X = X⫠⫠
 
+/--
+The type of facts in a phase space
+-/
 abbrev Fact (M : Type u) [PhaseSpace M] := { X : Set M // isFact X }
 
 instance [PhaseSpace M] : Coe (Fact M) (Set M) := ⟨Subtype.val⟩
