@@ -108,7 +108,7 @@ lemma triple_orth [PhaseSpace M] (X : Set M) : X⫠⫠⫠ = X⫠ := by
       intro y hy
       simpa [orthogonal, imp, Set.mem_setOf, mul_comm] using hy x hxX
     exact hm x hx'
-  · apply orthogonal_extensive (X := X⫠)
+  · apply orthogonal_extensive
 
 /--
 The biorthogonal closure operator on sets in a phase space.
@@ -126,7 +126,7 @@ def biorthogonalClosure [PhaseSpace M] : ClosureOperator (Set M) := {
     simpa [orthogonal, imp, Set.mem_setOf, mul_comm] using hn x hx
   idempotent' := by
     intro X
-    simp [triple_orth (X := X⫠)]
+    simp [triple_orth]
 }
 
 -- ## Facts
@@ -152,7 +152,7 @@ lemma coe_mk [PhaseSpace M] {X : Set M} {h : isFact X} :
     isFact (univ : Set M) := by
   rw [isFact]; symm
   simpa [top_eq_univ]
-    using ClosureOperator.closure_top (CLL.PhaseSpace.biorthogonalClosure (M:=M))
+    using ClosureOperator.closure_top CLL.PhaseSpace.biorthogonalClosure
 
 /--
 A set is a fact if and only if it is the orthogonal of some set
@@ -164,7 +164,7 @@ lemma fact_iff_exists_orth [PhaseSpace M] (X : Set M) :
     refine ⟨X⫠, ?_⟩
     exact hX
   · rintro ⟨Y, rfl⟩
-    simp [isFact, triple_orth (X := Y)]
+    simp [isFact, triple_orth]
 
 /--
 If Y is a fact, then X ⊸ Y is also a fact
@@ -203,10 +203,10 @@ Arbitrary intersections of facts are facts.
 lemma sInf_isFact [PhaseSpace M] {S : Set (Set M)}
     (H : ∀ X ∈ S, isFact X) : isFact (sInf S) := by
   have H' : ∀ X ∈ S, biorthogonalClosure.IsClosed X :=
-    fun X hX => (isFact_iff_closed (X := X)).1 (H X hX)
+    fun X hX => (isFact_iff_closed X).1 (H X hX)
   have : biorthogonalClosure.IsClosed (sInf S) :=
-    ClosureOperator.sInf_isClosed (c := biorthogonalClosure) (S := S) H'
-  exact (isFact_iff_closed (X := sInf S)).2 this
+    ClosureOperator.sInf_isClosed (c := biorthogonalClosure) H'
+  exact (isFact_iff_closed (sInf S)).2 this
 
 /--
 Binary intersections of facts are facts.
