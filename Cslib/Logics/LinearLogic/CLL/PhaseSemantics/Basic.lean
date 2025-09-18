@@ -14,21 +14,22 @@ import Cslib.Logics.LinearLogic.CLL.Basic
 /-!
 # Phase semantics for Classical Linear Logic
 
-This file develops the phase semantics for Classical Linear Logic (CLL), providing a complete
+This file develops the phase semantics for Classical Linear Logic (CLL), providing an
 algebraic interpretation of linear logic propositions in terms of phase spaces.
 
-Phase semantics, introduced by Girard, gives a denotational semantics for linear logic where
+Phase semantics is a denotational semantics for linear logic where
 propositions are interpreted as subsets of a commutative monoid, and logical operations
-correspond to specific set-theoretic operations involving orthogonality.
+correspond to specific set-theoretic operations.
 
 ## Main definitions
 
 * `PhaseSpace`: A commutative monoid equipped with a distinguished subset ⊥
 * `PhaseSpace.imp`: Linear implication `X ⊸ Y` between sets in a phase space
-* `PhaseSpace.orthogonal`: The orthogonal `X⫠` of a set X with respect to ⊥
+* `PhaseSpace.orthogonal`: The orthogonal `X⫠` of a set X
 * `PhaseSpace.isFact`: A fact is a set that equals its biorthogonal closure
 * `Fact`: The type of facts in a phase space
 * `PhaseSpace.interp`: Interpretation of CLL propositions in a phase space
+* `PhaseSpace.interp₁`: Interpretation of CLL propositions *as facts* in a phase space
 
 ## Main results
 
@@ -38,8 +39,8 @@ correspond to specific set-theoretic operations involving orthogonality.
 * `PhaseSpace.imp_isFact_of_fact`: Linear implication preserves the fact property
 
 ## TODO
-- Soundness theorem (valid sequents have non-empty interpretation)
-- Completeness theorem (non-empty interpretation implies validity)
+- Soundness theorem
+- Completeness theorem
 
 ## References
 
