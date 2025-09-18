@@ -6,7 +6,6 @@ Authors: Tanner Duve
 import Aesop
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Data.Set.Basic
-
 import Mathlib.Order.Closure
 import Mathlib.Algebra.Group.Pointwise.Set.Basic
 import Cslib.Logics.LinearLogic.CLL.Basic
@@ -23,6 +22,10 @@ syntax is defined in `Cslib.Logics.LinearLogic.CLL.Basic`.
 * `Fact`: a fact is a subset of a phase space that is equal to its biorthogonal.
 * `interp`: the interpretation of a proposition in a phase space.
 
+## TODO
+- Soundness
+- Completeness
+
 ## References
 
 * [J.-Y. Girard, *Linear Logic: its syntax and semantics*][Girard1995]
@@ -34,6 +37,7 @@ namespace CLL
 
 open Proposition
 open scoped Pointwise
+open Set
 
 /--
 A phase space is a pair (M, ⊥) where M is a commutative monoid and ⊥ is a subset of M.
@@ -108,25 +112,52 @@ lemma univ_closed [PhaseSpace M] : (Set.univ : Set M) = (Set.univ⫠)⫠ := by
 /--
 A fact is a subset of a phase space that is equal to its biorthogonal
 -/
-structure Fact (M : Type u) [PhaseSpace M] where
-  carrier : Set M
-  closed  : carrier = (carrier⫠)⫠
+def isFact [PhaseSpace M] (X : Set M) : Prop := X = X⫠⫠
+
+abbrev Fact (M : Type u) [PhaseSpace M] := { X : Set M // isFact X }
+
+instance [PhaseSpace M] : Coe (Fact M) (Set M) := ⟨Subtype.val⟩
+@[simp] lemma coe_mk [PhaseSpace M] {X : Set M} {h : isFact (M := M) X} :
+    ((⟨X, h⟩ : Fact M) : Set M) = X := rfl
+@[simp] lemma closed [PhaseSpace M] (F : Fact M) : isFact (M := M) (F : Set M) := F.property
 
 /--
 A set is a fact if and only if it is of the form `Y⫠` for some `Y`.
 -/
 lemma fact_iff_exists_orth [PhaseSpace M] (X : Set M) :
-    X = X⫠⫠ ↔ ∃ Y : Set M, X = Y⫠ := by
+    isFact X ↔ ∃ Y : Set M, X = Y⫠ := by
   constructor
   · intro hX
     refine ⟨X⫠, ?_⟩
     exact hX
   · rintro ⟨Y, rfl⟩
-    simp [triple_orth (X := Y)]
+    simp [isFact, triple_orth (X := Y)]
 
-instance [PhaseSpace M] : Coe (Fact M) (Set M) where
-  coe F := F.carrier
+/--
+If Y is a fact, then X ⊸ Y is a fact
+-/
+lemma imp_isFact_of_fact
+    [PhaseSpace M]
+    (X Y : Set M) (hY : isFact Y) :
+    isFact (X ⊸ Y) := by
+  have hXY : (X ⊸ Y) = (X * Y⫠)⫠ := by
+    ext m
+    constructor
+    · intro hm z hz
+      rcases hz with ⟨x, hxX, y, hyYperp, rfl⟩
+      have hmx : m * x ∈ Y := hm x hxX
+      have : y * (m * x) ∈ bot := hyYperp (m * x) (by simpa using hmx)
+      simpa [mul_left_comm, mul_comm, mul_assoc] using this
+    · intro hm x hxX
+      have hxYbi : m * x ∈ Y⫠⫠ := by
+        intro y hy
+        have : m * (x * y) ∈ bot := hm (x * y) ⟨x, hxX, y, hy, rfl⟩
+        simpa [mul_assoc, mul_left_comm, mul_comm] using this
+      rw [hY]; exact hxYbi
+  simp [isFact, hXY, triple_orth]
 
+def Fact.imp [PhaseSpace M] (X : Set M) (Y : Fact M) : Fact M :=
+  ⟨ X ⊸ Y, imp_isFact_of_fact X Y Y.property ⟩
 
 /--
 The set of idempotents in a phase space
