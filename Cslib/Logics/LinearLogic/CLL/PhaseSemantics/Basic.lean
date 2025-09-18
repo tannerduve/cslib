@@ -195,6 +195,51 @@ def interp [PhaseSpace M] (v : Atom → Fact M) : Proposition Atom → Set M
 
 @[inherit_doc] scoped notation:max "⟦" P "⟧" v:90 => interp v P
 
+lemma inter_closed_of_closed [PhaseSpace M] {A B : Set M}
+    (hA : isFact A) (hB : isFact B) :
+    isFact (A ∩ B) := by
+  have h₁ : A ∩ B ⊆ (A ∩ B)⫠⫠ := orthogonal_extensive _
+  have h₂A : (A ∩ B)⫠⫠ ⊆ A := by
+    have hmono : (A ∩ B)⫠⫠ ⊆ A⫠⫠ := by
+      change biorthogonalClosure (A ∩ B) ⊆ biorthogonalClosure A
+      exact PhaseSpace.biorthogonalClosure.monotone' (by
+        intro x hx; exact hx.1)
+    rw [← hA] at hmono; exact hmono;
+  have h₂B : (A ∩ B)⫠⫠ ⊆ B := by
+    have hmono : (A ∩ B)⫠⫠ ⊆ B⫠⫠ := by
+      change biorthogonalClosure (A ∩ B) ⊆ biorthogonalClosure B
+      exact PhaseSpace.biorthogonalClosure.monotone' (by
+        intro x hx; exact hx.2)
+    rw [← hB] at hmono; exact hmono
+  apply le_antisymm h₁
+  intro x hx; exact ⟨h₂A hx, h₂B hx⟩
+
+lemma isFact_iff_closed [PhaseSpace M] (X : Set M) :
+  isFact X ↔ biorthogonalClosure.IsClosed X := by
+  constructor <;> (intro; simp only [isFact, biorthogonalClosure]; symm; assumption)
+
+/--
+If each X in S is a fact, then the intersection of all X in S is a fact
+-/
+lemma sInf_isFact [PhaseSpace M] {S : Set (Set M)}
+    (H : ∀ X ∈ S, isFact X) :
+    isFact (sInf S) := by
+  have H' : ∀ X ∈ S, biorthogonalClosure.IsClosed X :=
+    fun X hX => (isFact_iff_closed (X := X)).1 (H X hX)
+  have : biorthogonalClosure.IsClosed (sInf S) :=
+    ClosureOperator.sInf_isClosed (c := biorthogonalClosure) (S := S) H'
+  exact (isFact_iff_closed (X := sInf S)).2 this
+
+/--
+If A and B are facts, then A ∩ B is a fact
+-/
+lemma inter_isFact_of_isFact [PhaseSpace M] {A B : Set M}
+    (hA : isFact A) (hB : isFact B) :
+    isFact (A ∩ B) := by
+  have : isFact (sInf ({A,B} : Set (Set M))) := sInf_isFact (by
+    intro X hX; rcases hX with rfl | rfl | _; simp [hA]; simp [hB])
+  simpa [sInf_insert, sInf_singleton, inf_eq_inter] using this
+
 end PhaseSpace
 
 end CLL
