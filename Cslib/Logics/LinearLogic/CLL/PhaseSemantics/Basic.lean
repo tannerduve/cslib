@@ -3,10 +3,12 @@ Copyright (c) 2025 Tanner Duve. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Tanner Duve
 -/
-
+import Aesop
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Data.Set.Basic
-import Aesop
+
+import Mathlib.Order.Closure
+import Mathlib.Algebra.Group.Pointwise.Set.Basic
 import Cslib.Logics.LinearLogic.CLL.Basic
 
 /-!
@@ -31,6 +33,7 @@ universe u v
 namespace CLL
 
 open Proposition
+open scoped Pointwise
 
 /--
 A phase space is a pair (M, ⊥) where M is a commutative monoid and ⊥ is a subset of M.
@@ -51,9 +54,57 @@ def imp [PhaseSpace M] (X Y : Set M) : Set M := {m | ∀ x ∈ X, m * x ∈ Y}
 The orthogonal of a set in a phase space.
 -/
 def orthogonal [PhaseSpace M] (X : Set M) : Set M := X ⊸ bot
-
 scoped postfix:max "⫠" => orthogonal
 
+/--
+The orthogonal of a set is antitone
+-/
+lemma orth_antitone [PhaseSpace M] {X Y : Set M} (hXY : X ⊆ Y) :
+    Y⫠ ⊆ X⫠ := by
+  intro m hm x hx
+  exact hm x (hXY hx)
+
+/--
+The biorthogonal operator is extensive
+-/
+lemma subset_biorthogonal [PhaseSpace M] (X : Set M) : X ⊆ X⫠⫠ := by
+  intro x hx n hn
+  simpa [orthogonal, imp, Set.mem_setOf, mul_comm] using hn x hx
+
+/--
+The triple-orthogonal of a set is equal to the orthogonal
+-/
+lemma triple_orth [PhaseSpace M] (X : Set M) : X⫠⫠⫠ = X⫠ := by
+  apply le_antisymm
+  · intro m hm x hxX
+    have hx' : x ∈ (X⫠)⫠ := by
+      intro y hy
+      simpa [orthogonal, imp, Set.mem_setOf, mul_comm] using hy x hxX
+    exact hm x hx'
+  · apply subset_biorthogonal (X := X⫠)
+
+/-- The biorthogonal closure operator on `Set M`. -/
+def biorthogonalClosure [PhaseSpace M] : ClosureOperator (Set M) := {
+  toFun := fun X => X⫠⫠
+  monotone' := by
+    intro X Y hXY m hm n hnY
+    have hnX : n ∈ X⫠ := by
+      intro x hxX
+      exact hnY x (hXY hxX)
+    exact hm n hnX
+  le_closure' := by
+    intro X x hx n hn
+    simpa [orthogonal, imp, Set.mem_setOf, mul_comm] using hn x hx
+  idempotent' := by
+    intro X
+    simp [triple_orth (X := X⫠)]
+}
+
+lemma univ_closed [PhaseSpace M] : (Set.univ : Set M) = (Set.univ⫠)⫠ := by
+  apply le_antisymm
+  · exact subset_biorthogonal (X := (Set.univ : Set M))
+  · intro m hm
+    exact Set.mem_univ m
 /--
 A fact is a subset of a phase space that is equal to its biorthogonal
 -/
@@ -61,18 +112,28 @@ structure Fact (M : Type u) [PhaseSpace M] where
   carrier : Set M
   closed  : carrier = (carrier⫠)⫠
 
+/--
+A set is a fact if and only if it is of the form `Y⫠` for some `Y`.
+-/
+lemma fact_iff_exists_orth [PhaseSpace M] (X : Set M) :
+    X = X⫠⫠ ↔ ∃ Y : Set M, X = Y⫠ := by
+  constructor
+  · intro hX
+    refine ⟨X⫠, ?_⟩
+    exact hX
+  · rintro ⟨Y, rfl⟩
+    simp [triple_orth (X := Y)]
+
 instance [PhaseSpace M] : Coe (Fact M) (Set M) where
   coe F := F.carrier
 
-def times [Monoid M] (A B : Set M) : Set M :=
-  { z | ∃ m ∈ A, ∃ n ∈ B, z = m * n }
 
 /--
 The set of idempotents in a phase space
 -/
-def idems [PhaseSpace M] : Set M := {m | m * m = m}
+def idems [Monoid M] : Set M := {m | m * m = m}
 
-def idemsIn [PhaseSpace M] (X : Set M) : Set M := {m | m ∈ idems ∧ m ∈ X}
+def idemsIn [Monoid M] (X : Set M) : Set M := {m | m ∈ idems ∧ m ∈ X}
 
 /-- interpretation of `1` as a constant set (not via recursion) -/
 def oneSet [PhaseSpace M] : Set M := ({1} : Set M)⫠⫠
@@ -90,14 +151,14 @@ def interp [PhaseSpace M] (v : Atom → Fact M) : Proposition Atom → Set M
   | .zero         => (∅ : Set M)⫠⫠
   | .top          => (Set.univ : Set M)
   | .bot          => (PhaseSpace.bot : Set M)
-  | .tensor X Y   => (times (interp v X) (interp v Y))⫠⫠
-  | .parr    X Y   => (times ((interp v X)⫠) ((interp v Y)⫠))⫠
+  | .tensor X Y   => ((interp v X) * (interp v Y))⫠⫠
+  | .parr    X Y   => (((interp v X)⫠) * ((interp v Y)⫠))⫠
   | .oplus  X Y   => ((interp v X) ∪ (interp v Y))⫠⫠
   | .with   X Y   => (interp v X) ∩ (interp v Y)
   | .bang   X     => ((interp v X) ∩ I)⫠⫠
   | .quest  X     => (((interp v X)⫠) ∩ I)⫠
 
-@[inherit_doc] scoped notation:max "⟦" P "⟧_" v:90 => interp v P
+@[inherit_doc] scoped notation:max "⟦" P "⟧" v:90 => interp v P
 
 end PhaseSpace
 
