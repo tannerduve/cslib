@@ -183,6 +183,20 @@ lemma coe_mk [PhaseSpace M] {X : Set M} {h : isFact X} :
   simpa only [top_eq_univ]
     using ClosureOperator.closure_top (CLL.PhaseSpace.biorthogonalClosure (M:=M))
 
+/-- In any phase space, `{1}⫠ = ⊥`. -/
+lemma orth_one_eq_bot [PhaseSpace M] :
+    ({(1 : M)} : Set M)⫠ = (PhaseSpace.bot : Set M) := by
+  ext m; constructor
+  · intro hm
+    simpa [orthogonal, imp, mem_setOf, mul_one] using hm 1 (by simp)
+  · intro hm x hx
+    rcases hx with rfl
+    simpa [orthogonal, imp, mem_setOf, mul_one] using hm
+
+/-- `0 := ⊤⫠` is a fact and is the smallest fact. -/
+@[simp] lemma zero_isFact [PhaseSpace M] : isFact ((∅ : Set M)⫠⫠) := by
+  simp only [isFact, triple_orth]
+
 /--
 A set is a fact if and only if it is the orthogonal of some set
 -/
@@ -194,6 +208,11 @@ lemma fact_iff_exists_orth [PhaseSpace M] (X : Set M) :
     exact hX
   · rintro ⟨Y, rfl⟩
     simp only [isFact, triple_orth (X := Y)]
+
+/-- `⊥` is a fact. -/
+@[simp] lemma bot_isFact [PhaseSpace M] : isFact (PhaseSpace.bot : Set M) := by
+  refine (fact_iff_exists_orth (M := M) (X := (PhaseSpace.bot : Set M))).2 ?_
+  exact ⟨{(1 : M)}, (orth_one_eq_bot (M := M)).symm⟩
 
 /--
 If Y is a fact, then X ⊸ Y is also a fact
@@ -218,13 +237,8 @@ lemma imp_isFact_of_fact [PhaseSpace M] (X Y : Set M) (hY : isFact Y) :
 
 /-- In a phase space, `G⫠⫠` is the smallest fact containing `G`. -/
 lemma biorth_least_fact [PhaseSpace M] (G : Set M) :
-    isFact (G⫠⫠) ∧ G ⊆ G⫠⫠ ∧
       ∀ {F : Set M}, isFact F → G ⊆ F → G⫠⫠ ⊆ F := by
   let c : ClosureOperator (Set M) := biorthogonalClosure
-  have h_idem : c (c G) = c G := c.idempotent G
-  have h_fact : isFact (G⫠⫠) := by
-    rw [fact_iff_exists_orth]; use G⫠
-  have h_ext : G ⊆ G⫠⫠ := c.le_closure G
   have h_min :
       ∀ {F : Set M}, isFact F → G ⊆ F → G⫠⫠ ⊆ F := by
     intro F hF hGF
@@ -232,8 +246,12 @@ lemma biorth_least_fact [PhaseSpace M] (G : Set M) :
       have : F = c F := by simpa [isFact, c] using hF
       exact (c.isClosed_iff).2 this.symm
     simpa [c] using ClosureOperator.closure_min hGF hF_closed
-  exact ⟨h_fact, h_ext, h_min⟩
+  apply h_min
 
+/-- `0` is the least fact. -/
+lemma zero_least_fact [PhaseSpace M] :
+    ∀ {F : Set M}, isFact F → ((∅ : Set M)⫠⫠) ⊆ F := by
+  simpa using (biorth_least_fact (M := M) (G := (∅ : Set M)))
 
 /--
 Linear implication between a set and a fact, yielding a fact.
