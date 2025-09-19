@@ -131,6 +131,33 @@ def biorthogonalClosure [PhaseSpace M] : ClosureOperator (Set M) := {
     simp only [triple_orth (X := X⫠)]
 }
 
+-- # Basic theory of phase spaces
+
+/--
+Given a phase space (P, ⊥) and a set of subsets (Gᵢ)_{i ∈ I} of P, we have that
+(⋃ᵢ Gᵢ)⫠ = ⋂ᵢ Gᵢ⫠.
+-/
+lemma orth_iUnion [PhaseSpace M] {ι : Sort*} (G : ι → Set M) :
+    (⋃ i, G i)⫠ = ⋂ i, (G i)⫠ := by
+  ext m; constructor
+  · intro hm
+    have hm' : ∀ x ∈ ⋃ j, G j, m * x ∈ PhaseSpace.bot := by
+      simpa [orthogonal, imp, mem_setOf] using hm
+    refine mem_iInter.mpr (fun i => ?_)
+    exact fun x hx => hm' x (mem_iUnion.mpr ⟨i, hx⟩)
+  · intro hm x hx
+    rcases mem_iUnion.mp hx with ⟨i, hix⟩
+    have hmi : m ∈ (G i)⫠ := mem_iInter.mp hm i
+    simpa [orthogonal, imp, mem_setOf] using hmi x hix
+
+/--
+Given a phase space (P, ⊥) and a set of subsets (Gᵢ)_{i ∈ I} of P, we have that
+∩ᵢ Gᵢ⫠⫠ = (∪ᵢ Gᵢ⫠)⫠.
+-/
+lemma iInter_biorth_eq_orth_iUnion_orth [PhaseSpace M] {ι : Sort*} (G : ι → Set M) :
+    (⋂ i, (G i)⫠⫠ : Set M) = (⋃ i, (G i)⫠)⫠ := by
+  simpa using (orth_iUnion (M := M) (G := fun i => (G i)⫠)).symm
+
 -- ## Facts
 
 /--
@@ -188,6 +215,25 @@ lemma imp_isFact_of_fact [PhaseSpace M] (X Y : Set M) (hY : isFact Y) :
         simpa [mul_assoc, mul_left_comm, mul_comm] using this
       rw [hY]; exact hxYbi
   simp only [isFact, hXY, triple_orth]
+
+/-- In a phase space, `G⫠⫠` is the smallest fact containing `G`. -/
+lemma biorth_least_fact [PhaseSpace M] (G : Set M) :
+    isFact (G⫠⫠) ∧ G ⊆ G⫠⫠ ∧
+      ∀ {F : Set M}, isFact F → G ⊆ F → G⫠⫠ ⊆ F := by
+  let c : ClosureOperator (Set M) := biorthogonalClosure
+  have h_idem : c (c G) = c G := c.idempotent G
+  have h_fact : isFact (G⫠⫠) := by
+    rw [fact_iff_exists_orth]; use G⫠
+  have h_ext : G ⊆ G⫠⫠ := c.le_closure G
+  have h_min :
+      ∀ {F : Set M}, isFact F → G ⊆ F → G⫠⫠ ⊆ F := by
+    intro F hF hGF
+    have hF_closed : c.IsClosed F := by
+      have : F = c F := by simpa [isFact, c] using hF
+      exact (c.isClosed_iff).2 this.symm
+    simpa [c] using ClosureOperator.closure_min hGF hF_closed
+  exact ⟨h_fact, h_ext, h_min⟩
+
 
 /--
 Linear implication between a set and a fact, yielding a fact.
