@@ -32,10 +32,10 @@ correspond to specific set-theoretic operations.
 
 ## Main results
 
-* `PhaseSpace.triple_orth`: The triple orthogonal equals the orthogonal (X⫠⫠⫠ = X⫠)
 * `PhaseSpace.biorthogonalClosure`: The biorthogonal operation forms a closure operator
 * `PhaseSpace.interp_closed`: Every interpreted proposition is a fact
-* `PhaseSpace.imp_isFact_of_fact`: Linear implication preserves the fact property
+
+Several lemmas about facts and orthogonality useful in the proof of soundness are proven here.
 
 ## TODO
 - Soundness theorem
@@ -215,6 +215,14 @@ lemma fact_iff_exists_orth [PhaseSpace M] (X : Set M) :
   exact ⟨{(1 : M)}, (orth_one_eq_bot (M := M)).symm⟩
 
 /--
+The interpretation of the multiplicative unit 1: the biorthogonal closure of {1}.
+-/
+def oneSet [PhaseSpace M] : Set M := ({1} : Set M)⫠⫠
+
+@[simp] lemma oneSet_isFact [PhaseSpace M] : isFact (oneSet : Set M) := by
+  simp only [oneSet, isFact, triple_orth]
+
+/--
 If Y is a fact, then X ⊸ Y is also a fact
 -/
 lemma imp_isFact_of_fact [PhaseSpace M] (X Y : Set M) (hY : isFact Y) :
@@ -248,10 +256,18 @@ lemma biorth_least_fact [PhaseSpace M] (G : Set M) :
     simpa [c] using ClosureOperator.closure_min hGF hF_closed
   apply h_min
 
-/-- `0` is the least fact. -/
+/-- `0` is the least fact (w.r.t. inclusion). -/
 lemma zero_least_fact [PhaseSpace M] :
     ∀ {F : Set M}, isFact F → ((∅ : Set M)⫠⫠) ⊆ F := by
-  simpa using (biorth_least_fact (M := M) (G := (∅ : Set M)))
+  intro F hF
+  have h := biorth_least_fact (M := M) (G := (∅ : Set M)) (F := F) hF
+              (by simp)
+  simpa using h
+
+/-- `⊤ = ∅⫠`, so `⊤` is a fact. -/
+@[simp] lemma top_eq_orth_empty [PhaseSpace M] :
+  (Set.univ : Set M) = (∅ : Set M)⫠ := by
+  ext m; simp [orthogonal, imp]
 
 /--
 Linear implication between a set and a fact, yielding a fact.
@@ -283,18 +299,37 @@ lemma inter_isFact_of_isFact [PhaseSpace M] {A B : Set M}
     intro X hX; rcases hX with rfl | rfl | _; simp [hA]; simp [hB])
   simpa [sInf_insert, sInf_singleton, inf_eq_inter] using this
 
+
+/-- `𝟭 := {1}⫠⫠ = ⊥⫠` -/
+lemma oneSet_eq_bot_orth [PhaseSpace M] :
+    (oneSet : Set M) = (PhaseSpace.bot : Set M)⫠ := by
+  simp only [oneSet, orth_one_eq_bot]
+
+/-- for any fact `G`, we have `𝟭 · G = G` -/
+lemma one_mul_fact_set [PhaseSpace M] (G : Fact M) :
+    (oneSet : Set M) * (G : Set M) = (G : Set M) := by
+  apply le_antisymm
+  · intro z hz
+    rcases hz with ⟨a, ha, q, hq, rfl⟩
+    have : a * q ∈ ((G : Set M)⫠⫠) := by
+      intro y hy
+      have hyq : y * q ∈ (PhaseSpace.bot : Set M) := by
+        simpa [orthogonal, imp, Set.mem_setOf] using hy q hq
+      have ha' : a ∈ (PhaseSpace.bot : Set M)⫠ := by
+        simpa [oneSet_eq_bot_orth] using ha
+      have : a * (y * q) ∈ PhaseSpace.bot := ha' _ hyq
+      simpa [mul_left_comm, mul_comm, mul_assoc] using this
+    rw [G.property]; exact this
+  · intro g hg
+    have h1 : (1 : M) ∈ (oneSet : Set M) := by
+      have : (1 : M) ∈ ({(1 : M)} : Set M) := by simp
+      exact orthogonal_extensive _ this
+    exact ⟨1, h1, g, hg, by simp⟩
+
 /--
 The idempotent elements within a given set X.
 -/
 def idempotentsIn [Monoid M] (X : Set M) : Set M := {m | IsIdempotentElem m ∧ m ∈ X}
-
-/--
-The interpretation of the multiplicative unit 1: the biorthogonal closure of {1}.
--/
-def oneSet [PhaseSpace M] : Set M := ({1} : Set M)⫠⫠
-
-@[simp] lemma oneSet_isFact [PhaseSpace M] : isFact (oneSet : Set M) := by
-  simp only [oneSet, isFact, triple_orth]
 
 /--
 The set I of idempotents that "belong to 1" in the phase semantics.
