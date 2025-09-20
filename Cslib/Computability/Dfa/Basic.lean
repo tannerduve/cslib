@@ -37,16 +37,15 @@ def toLts (dfa : Dfa State Symbol) : Lts State Symbol :=
 instance : Coe (Dfa State Symbol) (Lts State Symbol) where
   coe := toLts
 
+@[grind]
+theorem toLts_tr {dfa : Dfa State Symbol} :
+  dfa.toLts.Tr s1 μ s2 ↔ dfa.tr s1 μ = s2 := by
+  rfl
+
 /-- The LTS induced by a DFA is deterministic. -/
 @[grind]
 theorem toLts_deterministic (dfa : Dfa State Symbol) : dfa.toLts.Deterministic := by
-  intro s1 μ s2 s3 htr2 htr3
-  by_cases heq : s2 = s3
-  case pos => exact heq
-  case neg =>
-    cases htr2
-    cases htr3
-    rfl
+  grind
 
 /-- The LTS induced by a DFA is finite-state. -/
 @[grind]

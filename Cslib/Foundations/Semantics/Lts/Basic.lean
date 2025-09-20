@@ -251,14 +251,17 @@ variable {State : Type u} {Label : Type v} (lts : Lts State Label)
 
 /-- An lts is deterministic if a state cannot reach different states with the same transition
 label. -/
+@[grind]
 def Lts.Deterministic : Prop :=
   ∀ (s1 : State) (μ : Label) (s2 s3 : State),
     lts.Tr s1 μ s2 → lts.Tr s1 μ s3 → s2 = s3
 
 /-- The `μ`-image of a state `s` is the set of all `μ`-derivatives of `s`. -/
+@[grind]
 def Lts.Image (s : State) (μ : Label) : Set State := { s' : State | lts.Tr s μ s' }
 
 /-- An lts is image-finite if all images of its states are finite. -/
+@[grind]
 def Lts.ImageFinite : Prop :=
   ∀ s μ, Finite (lts.Image s μ)
 
