@@ -27,13 +27,17 @@ correspond to specific set-theoretic operations.
 * `PhaseSpace.orthogonal`: The orthogonal `X⫠` of a set X
 * `PhaseSpace.isFact`: A fact is a set that equals its biorthogonal closure
 * `Fact`: The type of facts in a phase space
-* `PhaseSpace.interp`: Interpretation of CLL propositions in a phase space
-* `PhaseSpace.interp₁`: Interpretation of CLL propositions *as facts* in a phase space
+* `PhaseSpace.FactExpr`: Inductive type for representing operations on facts
+* `PhaseSpace.interpret`: Interpretation of the connectives on facts
+* `PhaseSpace.interpProp`: Interpretation of CLL propositions as facts in a phase space
 
 ## Main results
 
 * `PhaseSpace.biorthogonalClosure`: The biorthogonal operation forms a closure operator
-* `PhaseSpace.interp_closed`: Every interpreted proposition is a fact
+* `PhaseSpace.orth_iUnion`: Orthogonal of union equals intersection of orthogonals
+* `PhaseSpace.sInf_isFact` and `PhaseSpace.inter_isFact_of_isFact`: Facts are closed under
+  intersections
+* `PhaseSpace.biorth_least_fact`: The biorthogonal closure gives the smallest fact containing a set
 
 Several lemmas about facts and orthogonality useful in the proof of soundness are proven here.
 
