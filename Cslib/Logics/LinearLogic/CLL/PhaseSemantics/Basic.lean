@@ -347,10 +347,10 @@ inductive unop where
 inductive binop where
 | tensor | parr | with | oplus
 
-inductive Connective [PhaseSpace M] where
-| const (c : const) : Connective
-| unop (u : unop) (X : Fact M) : Connective
-| binop (b : binop) (X Y : Fact M) : Connective
+inductive FactExpr [PhaseSpace M] where
+| const (c : const) : FactExpr
+| unop (u : unop) (X : Fact M) : FactExpr
+| binop (b : binop) (X Y : Fact M) : FactExpr
 
 def constInterpret [PhaseSpace M] (c : const) : Fact M :=
 match c with
@@ -369,7 +369,7 @@ def binopInterpret [PhaseSpace M] (b : binop) (X Y : Fact M) : Fact M := match b
 | .with => ⟨(X ∩ Y), by apply inter_isFact_of_isFact <;> aesop⟩
 | .oplus => ⟨(X ∪ Y)⫠⫠, by rw [fact_iff_exists_orth]; use (X ∪ Y)⫠⟩
 
-def interpret [PhaseSpace M] (c : @Connective M _) : Fact M := match c with
+def interpret [PhaseSpace M] (c : @FactExpr M _) : Fact M := match c with
 | .const c => constInterpret c
 | .unop u X => unopInterpret u X
 | .binop b X Y => binopInterpret b X Y
