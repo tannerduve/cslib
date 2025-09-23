@@ -13,7 +13,7 @@ jobs:
         uses: "alstr/todo-to-issue-action@v5"
         with:
           LANGUAGES: ".github/todo-to-issue-lean.json"
-          INSERT_ISSUE_URLS: "true"
+          INSERT_ISSUE_URLS: "false"
       - name: Set Git user
         run: |
           git config --global user.name "github-actions[bot]"
