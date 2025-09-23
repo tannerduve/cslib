@@ -12,7 +12,7 @@ jobs:
       - name: "TODO to Issue"
         uses: "alstr/todo-to-issue-action@v5"
         with:
-          LANGUAGES: ".github/todo-to-issue.json"
+          LANGUAGES: ".github/todo-to-issue-lean.json"
           INSERT_ISSUE_URLS: "true"
       - name: Set Git user
         run: |
