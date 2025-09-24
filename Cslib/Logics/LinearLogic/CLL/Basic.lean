@@ -272,7 +272,8 @@ theorem Equiv.trans {a b c : Proposition Atom} (hab : a ≡ b) (hbc : b ≡ c) :
 def propositionSetoid : Setoid (Proposition Atom) :=
   ⟨Equiv, Equiv.refl, Equiv.symm, Equiv.trans⟩
 
-/- TODO(placeholder): Proof-relevant logical equivalences
+/- TODO: feat(Logics/LinearLogic/CLL): Proof-relevant logical equivalences.
+
 Logical equivalences should have definitions of concrete proofs first, and then
 have accompanying theorems derived through `Proposition.equiv.toProp`.
 labels: logic
