@@ -11,3 +11,6 @@ jobs:
         uses: "alstr/todo-to-issue-action@v5"
         with:
           LANGUAGES: ".github/todo-to-issue-lean.json"
+          AUTO_P: "False"
+          ESCAPE: "False"
+          ISSUE_TEMPLATE: "{{ body }}\n\n{{ url }}"
