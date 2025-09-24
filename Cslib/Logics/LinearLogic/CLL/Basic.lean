@@ -272,12 +272,13 @@ theorem Equiv.trans {a b c : Proposition Atom} (hab : a ≡ b) (hbc : b ≡ c) :
 def propositionSetoid : Setoid (Proposition Atom) :=
   ⟨Equiv, Equiv.refl, Equiv.symm, Equiv.trans⟩
 
-/- TODO: feat(Logics/LinearLogic/CLL): Proof-relevant logical equivalences.
+/- TODO: Proof-relevant logical equivalences.
 
 Logical equivalences should have definitions of concrete proofs first, and then
 have accompanying theorems derived through `Proposition.equiv.toProp`.
 labels: logic
 -/
+
 theorem bang_top_eqv_one : (!⊤ : Proposition Atom) ≡ 1 := by
   constructor
   · apply Provable.fromProof
@@ -350,6 +351,12 @@ theorem tensor_distrib_oplus (a b c : Proposition Atom) :
       · apply Proof.oplus₂
         exact Proof.ax
 
+/- TODO: Proof-relevant substitution principles for logical equivalence in CLL.
+
+`subst_eqv_head` and `subst_eqv` should be defined using `Proposition.equiv` first, and then
+have accompanying theorems for `Proposition.Equiv`.
+labels: logic
+-/
 /-- The proposition at the head of a proof can be substituted by an equivalent
   proposition. -/
 theorem subst_eqv_head {Γ : Sequent Atom} {a b : Proposition Atom} (heqv : a ≡ b) :
