@@ -9,7 +9,7 @@ import Cslib.Foundations.Semantics.Lts.Basic
 set_option linter.style.longLine false in
 /-! # Deterministic Finite-State Automata
 
-A Deterministic Finite-State Automaton (DFA) is a finite-state machine that accepts or rejects
+A Deterministic Finite Automaton (DFA) is a finite-state machine that accepts or rejects
 a finite string.
 
 ## References
