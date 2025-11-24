@@ -679,12 +679,16 @@ syntax attrKind "lts_transition_notation" ident (str)? : command
 macro_rules
   | `($kind:attrKind lts_transition_notation $lts $sym) =>
     `(
+      @[nolint docBlame]
       $kind:attrKind notation3 t:39 "["μ"]⭢" $sym:str t':39 => (LTS.Tr.toRelation $lts μ) t t'
+      @[nolint docBlame]
       $kind:attrKind notation3 t:39 "["μs"]↠" $sym:str t':39 => (LTS.MTr.toRelation $lts μs) t t'
      )
   | `($kind:attrKind lts_transition_notation $lts) =>
     `(
+      @[nolint docBlame]
       $kind:attrKind notation3 t:39 "["μ"]⭢" t':39 => (LTS.Tr.toRelation $lts μ) t t'
+      @[nolint docBlame]
       $kind:attrKind notation3 t:39 "["μs"]↠" t':39 => (LTS.MTr.toRelation $lts μs) t t'
      )
 

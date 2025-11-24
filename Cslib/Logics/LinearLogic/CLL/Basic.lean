@@ -247,6 +247,7 @@ theorem Proposition.equiv.toProp (h : Proposition.equiv a b) : Proposition.Equiv
 instance {a b : Proposition Atom} : Coe (a.equiv b) (a.Equiv b) where
   coe := Proposition.equiv.toProp
 
+@[inherit_doc]
 scoped infix:29 " ≡ " => Proposition.Equiv
 
 namespace Proposition

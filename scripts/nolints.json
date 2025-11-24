@@ -1,0 +1,5 @@
+[
+  ["docBlame", "Cslib.LambdaCalculus.LocallyNameless.Untyped.Term.fullBetaRs"],
+  ["docBlame", "Cslib.LambdaCalculus.LocallyNameless.Untyped.Term.paraRs"],
+  ["docBlame", "Cslib.LambdaCalculus.LocallyNameless.Fsub.Term.rs"]
+]
