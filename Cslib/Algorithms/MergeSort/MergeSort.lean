@@ -48,7 +48,8 @@ def split (xs : List Nat) : List Nat × List Nat :=
     | x :: y :: xs, accL, accR => go xs (x :: accL) (y :: accR)
   go xs [] []
 
-/-- Merge sort expressed as a program in the query model. -/
+/-- Merge sort expressed as a program in the query model.
+TODO: Working version without partial -/
 partial def mergeSort : List Nat → Prog (List Nat)
   | []      => pure []
   | [x]     => pure [x]
@@ -63,4 +64,3 @@ partial def mergeSort : List Nat → Prog (List Nat)
 #eval timeProg (mergeSort [5,3,8,6,2,7,4,1])
 
 end Cslib.Algorithms.MergeSort.QueryBased
-

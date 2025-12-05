@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2025 Tanner Duve. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Tanner Duve, Sorrachai Yingchareonthawornhcai
+Authors: Tanner Duve
 -/
 
 import Cslib.Foundations.Control.Monad.Free.Effects
@@ -9,10 +9,9 @@ import Cslib.Foundations.Control.Monad.Free.Fold
 import Cslib.Foundations.Control.Monad.Time
 
 /-
-# Query model for comparison-based algorithms
+# Query model
 
-This file defines a simple query language for reading, writing, and comparing natural numbers,
-modeled as a free monad over primitive query operations.
+This file defines a simple query language modeled as a free monad over primitive query operations.
 
 We equip this language with a cost model (`TimeM`) that counts how many primitive queries
 are performed. An example algorithm (merge sort) is implemented in
@@ -20,10 +19,9 @@ are performed. An example algorithm (merge sort) is implemented in
 
 ## Main definitions
 
-- `QueryF`   : functor of primitive query operations
-- `Prog`     : free monad of query programs
+- `QueryF`, `Prog` : query language and programs
 - `timeOfQuery`, `timeInterp`, `timeProg` : cost model for programs
-- `evalProg` : concrete execution semantics for programs
+- `evalQuery`, `evalProg` : concrete execution semantics
 
 ## Tags
 
