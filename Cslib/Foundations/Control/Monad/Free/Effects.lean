@@ -7,6 +7,7 @@ import Cslib.Foundations.Control.Monad.Free
 import Mathlib.Control.Monad.Writer
 import Cslib.Foundations.Control.Monad.Time
 import Mathlib.Control.Monad.Cont
+import Mathlib.Data.Nat.Basic
 
 /-!
 # Free Monad
@@ -278,9 +279,14 @@ variable {α : Type}
 def tick (c : Nat := 1) : FreeTime PUnit :=
   FreeWriter.tell c
 
-/-- Run a `FreeTime` computation, returning the result and total time cost. -/
-def run (comp : FreeTime α) : α × Nat :=
-  FreeWriter.run (ω := Nat) comp
+/-- Run a `FreeTime` computation, returning the result and total time cost.
+
+The cost is accumulated additively starting from `0`. -/
+def run : FreeTime α → α × Nat
+  | .pure a => (a, 0)
+  | .liftBind (.tell c) k =>
+      let (a, t) := run (k .unit)
+      (a, c + t)
 
 /-- Interpret a `FreeTime` computation into the concrete time monad `TimeM`. -/
 def toTimeM (comp : FreeTime α) : TimeM α :=
@@ -289,7 +295,7 @@ def toTimeM (comp : FreeTime α) : TimeM α :=
 
 @[simp]
 lemma run_pure (a : α) :
-    run (.pure a : FreeTime α) = (a, 1) := rfl
+    run (.pure a : FreeTime α) = (a, 0) := rfl
 
 @[simp]
 lemma tick_def (c : Nat) :
