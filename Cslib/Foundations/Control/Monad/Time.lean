@@ -13,8 +13,8 @@ import Mathlib.Control.Monad.Writer
 as a simple cost model. As plain types it is isomorphic to `WriterT Nat Id`.
 -/
 
-set_option tactic.hygienic false
-set_option autoImplicit false
+
+
 
 structure TimeM (α : Type) where
   /-- The result of the computation. -/
