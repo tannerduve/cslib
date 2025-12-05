@@ -272,7 +272,7 @@ abbrev FreeTime := FreeWriter Nat
 
 namespace FreeTime
 
-variable {α : Type u}
+variable {α : Type}
 
 /-- Emit a time cost of `c` units (default `1`). -/
 def tick (c : Nat := 1) : FreeTime PUnit :=

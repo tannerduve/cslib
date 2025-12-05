@@ -28,7 +28,9 @@ are performed. An example algorithm (merge sort) is implemented in
 query model, free monad, time complexity, merge sort
 -/
 
-open Cslib
+namespace Cslib
+
+namespace Algorithms
 
 /-- Primitive queries on natural-number registers. -/
 inductive QueryF : Type → Type where
@@ -54,11 +56,13 @@ def cond {α} (b : Prog Bool) (t e : Prog α) : Prog α :=
 
 /-- A counting loop from `0` to `n - 1`, sequencing the body. -/
 def forLoop (n : Nat) (body : Nat → Prog PUnit) : Prog PUnit :=
-  let rec go : Nat → Prog PUnit
+  go n
+where
+  /-- Auxiliary recursive worker for `forLoop`. -/
+  go : Nat → Prog PUnit
     | 0       => pure ()
     | i + 1   =>
       body i >>= fun _ => go i
-  go n
 
 end Prog
 
@@ -94,3 +98,7 @@ def evalProg {α : Type} (p : Prog α) : α :=
     (fun {ι} (op : QueryF ι) (k : ι → α) =>
       k (evalQuery op))
     p
+
+end Algorithms
+
+end Cslib

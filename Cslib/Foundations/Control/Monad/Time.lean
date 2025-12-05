@@ -1,82 +1,73 @@
 /-
-Copyright (c) 2025 Tanner Duve. All rights reserved.
+Copyright (c) 2025 Sorrachai Yingchareonthawornhcai. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Tanner Duve, Sorrachai Yingchareonthawornhcai
+Authors: Sorrachai Yingchareonthawornhcai, Tanner Duve
 -/
 
 import Mathlib.Control.Monad.Writer
 
 /-!
-# Time monad
+# Time Monad
 
-This file defines a simple monad `TimeM` that pairs a value with a natural number
-representing an accumulated time/cost. As plain types it is isomorphic to `Writer Nat`.
-
-## Main definitions
-
-- `TimeM`          : computations with a time component
-- `TimeM.equivWriter` : equivalence with `Writer Nat`
+`TimeM` is a monad that tracks execution time alongside computations, using natural numbers
+as a simple cost model. As plain types it is isomorphic to `WriterT Nat Id`.
 -/
 
-namespace Cslib
+set_option tactic.hygienic false
+set_option autoImplicit false
 
-universe u
-
-/-- A computation that returns a value of type `α` together with an accumulated
-time cost (a natural number). -/
-structure TimeM (α : Type u) where
+structure TimeM (α : Type) where
   /-- The result of the computation. -/
-  val : α
+  ret : α
   /-- The accumulated time cost. -/
   time : Nat
 
 namespace TimeM
 
-variable {α β : Type u}
-
-/-- Return a value with zero time cost. -/
-def pure (a : α) : TimeM α :=
+def pure {α} (a : α) : TimeM α :=
   ⟨a, 0⟩
 
-/-- Sequence two computations, adding their time components. -/
-def bind (m : TimeM α) (f : α → TimeM β) : TimeM β :=
-  let r := f m.val
-  ⟨r.val, m.time + r.time⟩
+def bind {α β} (m : TimeM α) (f : α → TimeM β) : TimeM β :=
+  let r := f m.ret
+  ⟨r.ret, m.time + r.time⟩
 
 instance : Monad TimeM where
   pure := pure
   bind := bind
 
-/-- Construct a value that costs `c` units of time. -/
-def tick (a : α) (c : Nat := 1) : TimeM α :=
+@[simp] def tick {α : Type} (a : α) (c : ℕ := 1) : TimeM α :=
   ⟨a, c⟩
 
-@[simp] theorem time_of_pure (a : α) : (pure a).time = 0 := rfl
+scoped notation "✓" a:arg ", " c:arg => tick a c
+scoped notation "✓" a:arg => tick a  -- Default case with only one argument
 
-@[simp] theorem time_of_bind (m : TimeM α) (f : α → TimeM β) :
-    (bind m f).time = m.time + (f m.val).time := rfl
+def tickUnit : TimeM Unit :=
+  ✓ () -- This uses the default time increment of 1
 
-@[simp] theorem time_of_tick (a : α) (c : Nat) : (tick a c).time = c := rfl
+@[simp] theorem time_of_pure {α} (a : α) : (pure a).time = 0 := rfl
+@[simp] theorem time_of_bind {α β} (m : TimeM α) (f : α → TimeM β) :
+ (TimeM.bind m f).time = m.time + (f m.ret).time := rfl
+@[simp] theorem time_of_tick {α} (a : α) (c : ℕ) : (tick a c).time = c := rfl
+@[simp] theorem ret_bind {α β} (m : TimeM α) (f : α → TimeM β) :
+  (TimeM.bind m f).ret = (f m.ret).ret := rfl
 
-@[simp] theorem val_bind (m : TimeM α) (f : α → TimeM β) :
-    (bind m f).val = (f m.val).val := rfl
+-- this allow us to simplify the chain of compositions
+attribute [simp] Bind.bind Pure.pure TimeM.pure
 
-/-- `TimeM` is (definitionally) the same as the writer monad `Writer Nat`. -/
+/-- `TimeM` is (definitionally) the same as the writer monad `WriterT Nat Id`. -/
 abbrev WriterNat (α : Type) := WriterT Nat Id α
 
-/-- Equivalence between `TimeM α` and `Writer Nat α` as plain types. -/
+/-- Equivalence between `TimeM α` and `WriterT Nat Id α` as plain types. -/
 def equivWriter (α : Type) : TimeM α ≃ WriterNat α where
-  toFun m := (m.val, m.time)
+  toFun m := (m.ret, m.time)
   invFun w := ⟨w.1, w.2⟩
   left_inv m := by cases m; rfl
   right_inv w := by cases w; rfl
 
 @[simp] lemma equivWriter_toFun {α : Type} (m : TimeM α) :
-    (equivWriter α m : WriterNat α) = (m.val, m.time) := rfl
+    (equivWriter α m : WriterNat α) = (m.ret, m.time) := rfl
 
 @[simp] lemma equivWriter_invFun {α : Type} (w : WriterNat α) :
     (equivWriter α).invFun w = TimeM.mk w.1 w.2 := rfl
 
 end TimeM
-
-end Cslib
