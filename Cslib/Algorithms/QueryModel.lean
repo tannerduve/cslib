@@ -40,6 +40,10 @@ abbrev Prog (QType : Type u → Type u) (α : Type v) := FreeM QType α
 
 
 instance {QType : Type u → Type u} : Monad (Prog QType) := inferInstance
+
+
+
+
 namespace Prog
 
 
@@ -74,8 +78,8 @@ open Query
 /--
 Interpret primitive queries into the time-counting monad `TimeM`.
 -/
-def timeInterp [Query QF] {ι : Type u} (q : QF ι) : Nat :=
-  Query.timeOfQuery q
+def timeInterp [Query QF] [Inhabited ι] (q : QF ι) : TimeM ι :=
+  TimeM.tick default (timeOfQuery q)
 
 -- /-- Interpret primitive queries into the time-counting monad `TimeM`. -/
 -- def timeInterp : {ι : Type} → QueryF ι → TimeM ι
@@ -83,7 +87,11 @@ def timeInterp [Query QF] {ι : Type u} (q : QF ι) : Nat :=
 --   | _, .write i v   => TimeM.tick PUnit.unit (timeOfQuery (.write i v))
 --   | _, .cmp i j     => TimeM.tick false (timeOfQuery (.cmp i j))
 
-set_option diagnostics true
+
+instance {α : Type u} {Q : Type u → Type u} [Query Q] : MonadLiftT (Prog Q) TimeM where
+  monadLift (p : Prog Q α) : TimeM α :=
+    timeInterp
+
 /-- Total time cost of running a program under the interpreter `timeInterp`. -/
 def timeProg [Query QF] {α : Type u}  (p : Prog QF α) : Nat :=
   (p.liftM timeInterp).time

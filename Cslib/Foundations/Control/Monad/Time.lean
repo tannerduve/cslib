@@ -13,7 +13,7 @@ import Mathlib.Control.Monad.Writer
 as a simple cost model. As plain types it is isomorphic to `WriterT Nat Id`.
 -/
 
-structure TimeM (α : Type) where
+structure TimeM (α : Type u) where
   /-- The result of the computation. -/
   ret : α
   /-- The accumulated time cost. -/
