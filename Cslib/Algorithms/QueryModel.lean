@@ -38,7 +38,6 @@ namespace Algorithms
 /-- Programs built as the free monad over `QueryF`. -/
 abbrev Prog (QType : Type u → Type u) (α : Type v) := FreeM QType α
 
-instance {QType : Type u → Type u} : Bind (Prog QType) := inferInstance
 
 instance {QType : Type u → Type u} : Monad (Prog QType) := inferInstance
 namespace Prog
@@ -84,6 +83,7 @@ def timeInterp [Query QF] {ι : Type u} (q : QF ι) : Nat :=
 --   | _, .write i v   => TimeM.tick PUnit.unit (timeOfQuery (.write i v))
 --   | _, .cmp i j     => TimeM.tick false (timeOfQuery (.cmp i j))
 
+set_option diagnostics true
 /-- Total time cost of running a program under the interpreter `timeInterp`. -/
 def timeProg [Query QF] {α : Type u}  (p : Prog QF α) : Nat :=
   (p.liftM timeInterp).time
