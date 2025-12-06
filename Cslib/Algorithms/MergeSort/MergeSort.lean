@@ -27,8 +27,37 @@ namespace Cslib.Algorithms.MergeSort.QueryBased
 
 open Cslib.Algorithms
 
+
+/-- The Model for comparison sorting natural-number registers.-/
+inductive QueryF : Type → Type where
+  /-- Read the value stored at index `i`. -/
+  | read  : Nat → QueryF Nat
+  /-- Write value `v` at index `i`. -/
+  | write : Nat → Nat → QueryF PUnit
+  /-- Compare the values at indices `i` and `j`. -/
+  | cmp   : Nat → Nat → QueryF Bool
+
+/-- Lift a comparison into the query language at the top level. -/
+def cmpVal (x y : Nat) : Prog Bool :=
+  FreeM.lift (QueryF.cmp x y)
+
+/-- Concrete semantics for primitive queries, used to run programs. -/
+def evalQuery : {ι : Type} → QueryF ι → ι
+  | _, .read _      => 0
+  | _, .write _ _   => PUnit.unit
+  | _, .cmp x y     => x ≤ y
+
+
+
+
+abbrev SortProg := Prog QueryF
+
+/-- Lift a comparison on values into the free monad. -/
+def cmpVal (x y : Nat) : SortProg Bool :=
+  FreeM.lift (QueryF.cmp x y)
+
 /-- Merge two sorted lists using comparisons in the query monad. -/
-def merge : List Nat → List Nat → Prog (List Nat)
+def merge : List Nat → List Nat → SortProg (List Nat)
   | [], ys => pure ys
   | xs, [] => pure xs
   | x :: xs', y :: ys' => do
@@ -50,7 +79,7 @@ def split (xs : List Nat) : List Nat × List Nat :=
 
 /-- Merge sort expressed as a program in the query model.
 TODO: Working version without partial -/
-partial def mergeSort : List Nat → Prog (List Nat)
+partial def mergeSort : List Nat → SortProg (List Nat)
   | []      => pure []
   | [x]     => pure [x]
   | xs      =>

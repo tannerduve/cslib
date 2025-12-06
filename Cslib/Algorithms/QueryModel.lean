@@ -33,70 +33,67 @@ namespace Cslib
 
 namespace Algorithms
 
-/-- Primitive queries on natural-number registers. -/
-inductive QueryF : Type → Type where
-  /-- Read the value stored at index `i`. -/
-  | read  : Nat → QueryF Nat
-  /-- Write value `v` at index `i`. -/
-  | write : Nat → Nat → QueryF PUnit
-  /-- Compare the values at indices `i` and `j`. -/
-  | cmp   : Nat → Nat → QueryF Bool
+
 
 /-- Programs built as the free monad over `QueryF`. -/
-abbrev Prog (α : Type) := FreeM QueryF α
+abbrev Prog (QType : Type u → Type u) (α : Type v) := FreeM QType α
 
+instance {QType : Type u → Type u} : Bind (Prog QType) := inferInstance
+
+instance {QType : Type u → Type u} : Monad (Prog QType) := inferInstance
 namespace Prog
 
-/-- Lift a comparison on values into the free monad. -/
-def cmpVal (x y : Nat) : Prog Bool :=
-  FreeM.lift (QueryF.cmp x y)
+
 
 /-- Conditional branching on a boolean program. -/
-def cond {α} (b : Prog Bool) (t e : Prog α) : Prog α :=
+def cond {QType} {α} (b : Prog QType Bool) (t e : Prog QType α) : Prog QType α :=
   b.bind (fun b' => if b' then t else e)
 
 /-- A counting loop from `0` to `n - 1`, sequencing the body. -/
-def forLoop (n : Nat) (body : Nat → Prog PUnit) : Prog PUnit :=
+def forLoop {QType} (n : Nat) (body : Nat → Prog QType PUnit) : Prog QType PUnit :=
   go n
 where
   /-- Auxiliary recursive worker for `forLoop`. -/
-  go : Nat → Prog PUnit
+  go : Nat → Prog QType PUnit
     | 0       => pure ()
     | i + 1   =>
       body i >>= fun _ => go i
 
 end Prog
 
-/-- Constant time cost assigned to each primitive query. -/
-def timeOfQuery : {ι : Type} → QueryF ι → Nat
-  | _, .read _       => 1
-  | _, .write _ _    => 1
-  | _, .cmp _ _      => 1
+class Query (Q : Type u → Type u) where
+  timeOfQuery : {ι : Type u} → Q ι → Nat
+  evalQuery : {ι : Type u} → Q ι → ι
 
-/-- Interpret primitive queries into the time-counting monad `TimeM`. -/
-def timeInterp : {ι : Type} → QueryF ι → TimeM ι
-  | _, .read i      => TimeM.tick 0 (timeOfQuery (.read i))
-  | _, .write i v   => TimeM.tick PUnit.unit (timeOfQuery (.write i v))
-  | _, .cmp i j     => TimeM.tick false (timeOfQuery (.cmp i j))
+open Query
+-- /-- Constant time cost assigned to each primitive query. -/
+-- def timeOfQuery : {ι : Type} → QueryF ι → Nat
+--   | _, .read _       => 1
+--   | _, .write _ _    => 1
+--   | _, .cmp _ _      => 1
+
+/--
+Interpret primitive queries into the time-counting monad `TimeM`.
+-/
+def timeInterp [Query QF] {ι : Type u} (q : QF ι) : Nat :=
+  Query.timeOfQuery q
+
+-- /-- Interpret primitive queries into the time-counting monad `TimeM`. -/
+-- def timeInterp : {ι : Type} → QueryF ι → TimeM ι
+--   | _, .read i      => TimeM.tick 0 (timeOfQuery (.read i))
+--   | _, .write i v   => TimeM.tick PUnit.unit (timeOfQuery (.write i v))
+--   | _, .cmp i j     => TimeM.tick false (timeOfQuery (.cmp i j))
 
 /-- Total time cost of running a program under the interpreter `timeInterp`. -/
-def timeProg {α : Type} (p : Prog α) : Nat :=
+def timeProg [Query QF] {α : Type u}  (p : Prog QF α) : Nat :=
   (p.liftM timeInterp).time
 
-/-- Lift a comparison into the query language at the top level. -/
-def cmpVal (x y : Nat) : Prog Bool :=
-  FreeM.lift (QueryF.cmp x y)
 
-/-- Concrete semantics for primitive queries, used to run programs. -/
-def evalQuery : {ι : Type} → QueryF ι → ι
-  | _, .read _      => 0
-  | _, .write _ _   => PUnit.unit
-  | _, .cmp x y     => x ≤ y
 
 /-- Evaluate a query program to a pure value using `evalQuery`. -/
-def evalProg {α : Type} (p : Prog α) : α :=
+def evalProg [Query QF] {α : Type} (p : Prog QF α) : α :=
   FreeM.foldFreeM id
-    (fun {ι} (op : QueryF ι) (k : ι → α) =>
+    (fun {ι} (op : QF ι) (k : ι → α) =>
       k (evalQuery op))
     p
 
