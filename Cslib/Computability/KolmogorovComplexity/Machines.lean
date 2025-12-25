@@ -99,10 +99,10 @@ We take the least `n` in `goodLengths F x`, but if none exist we return `x.lengt
 -/
 noncomputable def plainKC {α : Type} [Primcodable α]
   (F : OracleFamily α) (x : BinSeq) : Nat :=
-(Classical.decEq Nat |> fun _ =>
+by
+  classical
   let S : Set Nat := goodLengths F x
-  if h : S.Nonempty then sInf S else x.length)
-
+  exact if h : S.Nonempty then sInf S else x.length
 
 /-- Plain KC relative to a single oracle. -/
 noncomputable def plainKC₁ (O : Oracle) (x : BinSeq) : Nat :=
