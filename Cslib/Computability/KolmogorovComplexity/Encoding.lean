@@ -1,3 +1,9 @@
+/-
+Copyright (c) 2025 Elan Roth. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Elan Roth, Tanner Duve
+-/
+
 import Mathlib.Computability.TuringDegree
 import Mathlib.Data.Option.Basic
 import Mathlib.Tactic.Linarith
@@ -12,7 +18,8 @@ set_option linter.style.longLine false
 open Denumerable Encodable
 
 -- This section provides and encoding for oracle partial recursive functions and a definition
--- of the universal partial recursive function relative to an oracle, along with a proof that it is universal.
+-- of the universal partial recursive function relative to an oracle, along with a proof that it is
+-- universal.
 
 /-
 The identity function is recursive in any oracle O.
@@ -20,18 +27,17 @@ The identity function is recursive in any oracle O.
 theorem RecursiveIn_id {O : Set (ℕ →. ℕ)} : RecursiveIn O (fun n => Part.some n) := by
   -- The left and right projections are recursive, so their pairing is also recursive.
   have h_left : RecursiveIn O (fun n => Part.some (Nat.unpair n).1) := by
-    -- The left projection function is one of the basic functions in the definition of recursive functions, so it is recursive.
+    -- The left projection function is one of the basic functions in the definition of recursive
+    -- functions, so it is recursive.
     apply RecursiveIn.left
   have h_right : RecursiveIn O (fun n => Part.some (Nat.unpair n).2) := by
     -- The right projection function is primitive recursive, so it is recursive.
     apply RecursiveIn.right;
-  have h_pair : ∀ (f g : ℕ →. ℕ), RecursiveIn O f → RecursiveIn O g → RecursiveIn O (fun n => (f n).bind (fun x => (g n).map (fun y => Nat.pair x y))) := by
+  have h_pair : ∀ (f g : ℕ →. ℕ), RecursiveIn O f → RecursiveIn O g →
+    RecursiveIn O (fun n => (f n).bind (fun x => (g n).map (fun y => Nat.pair x y))) := by
     exact fun f g a a_1 ↦ RecursiveIn.pair a a_1;
   convert h_pair _ _ h_left h_right using 2 ; aesop
 
-#check Nat.unpaired
-
-#print Nat.Primrec
 /-
 Needed these following theorems for Encoding to compile
 -/
@@ -43,15 +49,15 @@ theorem RecursiveIn.of_eq {f g : ℕ →. ℕ} (hf : RecursiveIn O f) (H : ∀ n
 If a function is partial recursive, then it is recursive in every partial function.
 -/
 lemma Nat.Partrec.recursiveIn (pF : Nat.Partrec f) : RecursiveIn O f := by
-  induction' pF with f' g' _ _ ih₁ ih₂ f' g' _ _ ih₁ ih₂ f' g' _ _ ih₁ ih₂ f' _ ih
+  induction pF
   repeat {constructor}
-  · case pair =>
+  · case pair _ _ _ _ ih₁ ih₂ =>
     apply RecursiveIn.pair ih₁ ih₂
-  · case comp =>
+  · case comp _ _ _ _ ih₁ ih₂ =>
     apply RecursiveIn.comp ih₁ ih₂
-  · case prec =>
+  · case prec _ _ _ _ ih₁ ih₂ =>
     apply RecursiveIn.prec ih₁ ih₂
-  · case rfind =>
+  · case rfind _ _ ih =>
     apply RecursiveIn.rfind ih
 
 theorem RecursiveIn.of_primrec {f : ℕ → ℕ} (hf : Nat.Primrec f) :
@@ -67,7 +73,6 @@ lemma RecursiveIn_comp_total {O : Set (ℕ →. ℕ)} {f g : ℕ → ℕ}
   (hf : RecursiveIn O (fun n => Part.some (f n)))
   (hg : RecursiveIn O (fun n => Part.some (g n))) :
   RecursiveIn O (fun n => Part.some (f (g n))) := by
-    -- Apply the composition theorem to f and g, given that they are both recursive.
     have h_comp : RecursiveIn O (fun n => Part.some (f (g n))) := by
       have h_f : RecursiveIn O (fun n => Part.some (f n)) := hf
       have h_g : RecursiveIn O (fun n => Part.some (g n)) := hg
@@ -80,7 +85,6 @@ lemma RecursiveIn_pair_total {O : Set (ℕ →. ℕ)} {f g : ℕ → ℕ}
   (hf : RecursiveIn O (fun n => Part.some (f n)))
   (hg : RecursiveIn O (fun n => Part.some (g n))) :
   RecursiveIn O (fun n => Part.some (Nat.pair (f n) (g n))) := by
-    -- By definition of $RecursiveIn$, we know that the composition of the projection function and the pairing function is recursive.
     have h_comp : RecursiveIn O (fun n => Part.some (Nat.unpair (Nat.pair (f n) (g n)) |>.1)) ∧ RecursiveIn O (fun n => Part.some (Nat.unpair (Nat.pair (f n) (g n)) |>.2)) := by
       aesop;
     convert RecursiveIn.pair h_comp.1 h_comp.2 using 1;
@@ -90,30 +94,32 @@ lemma RecursiveIn_pair_total {O : Set (ℕ →. ℕ)} {f g : ℕ → ℕ}
 lemma RecursiveIn_prec_total {O : Set (ℕ →. ℕ)} {f : ℕ → ℕ} {h : ℕ → ℕ}
   (hf : RecursiveIn O (fun n => Part.some (f n)))
   (hh : RecursiveIn O (fun n => Part.some (h n))) :
-  RecursiveIn O (fun p => Part.some (Nat.rec (f p.unpair.1) (fun y IH => h (Nat.pair p.unpair.1 (Nat.pair y IH))) p.unpair.2)) := by
-    convert ( RecursiveIn.prec ) ?_ ?_ using 1;
-    simp +zetaDelta at *;
-    rotate_left;
-    · exact fun n => Part.some ( f n );
-    . exact fun n => Part.some ( h n );
-    · assumption;
-    · assumption;
-    · -- By induction on the second component of the pair, we can show that the two functions are equal.
-      funext p; induction' (Nat.unpair p).2 with y ih generalizing p; aesop;
-      simp +decide [ ← ih ]
+  RecursiveIn O
+  (fun p =>
+  Part.some (Nat.rec (f p.unpair.1) (fun y IH => h (Nat.pair p.unpair.1 (Nat.pair y IH)))
+    p.unpair.2)) := by
+    refine RecursiveIn.of_eq (O := O)
+      (RecursiveIn.prec
+        (O := O)
+        (f := fun n => Part.some (f n))
+        (h := fun n => Part.some (h n))
+        hf hh) ?_
+    intro p
+    rcases Nat.unpair p with ⟨a, n⟩
+    induction n with
+    | zero => simp
+    | succ n ih =>
+      simp at ih
+      simp [ih]
 
 theorem RecursiveIn_add {O : Set (ℕ →. ℕ)} : RecursiveIn O (fun p => Part.some (p.unpair.1 + p.unpair.2)) := by
-  -- By definition of primitive recursive functions, addition is primitive recursive.
   have h_primrec : Nat.Primrec (fun p : ℕ => (Nat.unpair p).1 + (Nat.unpair p).2) := by
-    -- The addition function is primitive recursive by definition.
     apply Nat.Primrec.add;
-  -- Since primitive recursive functions are a subset of recursive functions, and recursive functions are closed under composition with oracles, this should hold.
   have h_rec : ∀ {f : ℕ → ℕ}, Nat.Primrec f → RecursiveIn O (fun p => Part.some (f p)) := by
     intro f hf;
     induction hf;
     all_goals try { exact? };
-    -- The successor function is primitive recursive, so it is recursive in any oracle.
-    apply RecursiveIn.succ;
+    exact RecursiveIn.succ;
   exact h_rec h_primrec
 
 /-
@@ -203,8 +209,12 @@ theorem RecursiveIn.rfind' {f : ℕ →. ℕ} (hf : RecursiveIn O f) :
           simp [Part.some, Part.add_def];
       convert h_target using 1;
     convert h_target using 1;
-    funext p; simp [Nat.unpaired];
-    cases h : Nat.rfind ( fun n => Part.map ( fun m => Decidable.decide ( m = 0 ) ) ( f ( Nat.pair ( Nat.unpair p ).1 ( n + ( Nat.unpair p ).2 ) ) ) ) ;
+    funext p; simp only [Nat.unpaired];
+    cases h : Nat.rfind (
+      fun n => Part.map (
+        fun m => Decidable.decide ( m = 0 ) ) ( f ( Nat.pair ( Nat.unpair p ).1 ( n + ( Nat.unpair p ).2 ) )
+        )
+        ) ;
     simp_all only [Nat.unpair_pair, Part.map_eq_map, Part.coe_some]
     ext ; simp [ Part.map ];
     simp [ Part.add_def ];
@@ -278,41 +288,29 @@ def decodeCodeo : ℕ → codeo
     | 2 => codeo.comp   (decodeCodeo q.unpair.1) (decodeCodeo q.unpair.2)
     | 3 => codeo.prec   (decodeCodeo q.unpair.1) (decodeCodeo q.unpair.2)
     | _ => codeo.rfind' (decodeCodeo q)
-termination_by n => n
-decreasing_by
-  simp [Nat.add_comm, Nat.add_left_comm]  -- turns n+3+1 into n+4
-  simp [q] at hq₁ hq₂
-  · exact hq₁
-  · exact hq₂
-  · aesop
 
 theorem encodeCodeo_decodeCodeo' : ∀ c, encodeCodeo (decodeCodeo c) = c :=
-λ c => match c with
+fun c => match c with
   | 0 => by simp [decodeCodeo, encodeCodeo]
   | 1 => by simp [decodeCodeo, encodeCodeo]
   | 2 => by simp [decodeCodeo, encodeCodeo]
   | 3 => by simp [decodeCodeo, encodeCodeo]
   | 4 => by simp [decodeCodeo, encodeCodeo]
   | n + 5 => by
-    have h_inv : ∀ c : codeo, encodeCodeo (decodeCodeo (encodeCodeo c)) = encodeCodeo c := by
-      intro c
-      induction' n using Nat.strong_induction_on with n ih generalizing c
-      generalize_proofs at *;
-      induction' c with c ih generalizing n
-      all_goals generalize_proofs at *;
-      all_goals simp +arith [ encodeCodeo, decodeCodeo ] at *;
-      · norm_num [ Nat.add_div ] at * ; aesop ;
-      · norm_num [ Nat.add_div ] at * ; aesop ;
-      · norm_num [ Nat.add_div ] at * ; aesop ;
-      · norm_num [ Nat.add_div ] at * ; aesop ;
+    have h_inv (c : codeo) : encodeCodeo (decodeCodeo (encodeCodeo c)) = encodeCodeo c := by
+      induction c
+      all_goals simp +arith [ encodeCodeo, decodeCodeo ] at * <;>
+      norm_num [ Nat.add_div ] at * <;> aesop
     have h_surjective : ∀ m : ℕ, ∃ c : codeo, encodeCodeo c = m := by
       intro m;
       use decodeCodeo m;
-      induction' m using Nat.strong_induction_on with m ih;
-      rcases m with ( _ | _ | _ | _ | _ | m ) <;> simp +arith [ * ] at *;
-      all_goals unfold decodeCodeo; simp +decide [ * ] at *;
+      induction m using Nat.strong_induction_on
+      rename_i m ih
+      rcases m with ( _ | _ | _ | _ | _ | m ) <;> simp +arith only [not_lt_zero',
+        IsEmpty.forall_iff, implies_true] at *;
+      all_goals unfold decodeCodeo; simp +decide only [nonpos_iff_eq_zero, forall_eq] at *;
       by_cases h : (m + 1) % 5 = 0 ∨ (m + 1) % 5 = 1 ∨ (m + 1) % 5 = 2 ∨ (m + 1) % 5 = 3 ∨ (m + 1) % 5 = 4;
-      · rcases h with ( h | h | h | h | h ) <;> simp +arith [ h ];
+      · rcases h with ( h | h | h | h | h ) <;> simp only [h];
         · have h_encode_oracle : ∀ i : ℕ, encodeCodeo (codeo.oracle i) = 4 + 5 * i := by
             exact fun i ↦ rfl;
           linarith [ Nat.mod_add_div ( m + 1 ) 5, h_encode_oracle ( ( m + 1 ) / 5 ) ];
@@ -326,7 +324,7 @@ theorem encodeCodeo_decodeCodeo' : ∀ c, encodeCodeo (decodeCodeo c) = c :=
           omega;
         · have h_ind : encodeCodeo (decodeCodeo (Nat.unpair ((m + 1) / 5)).1) = (Nat.unpair ((m + 1) / 5)).1 ∧ encodeCodeo (decodeCodeo (Nat.unpair ((m + 1) / 5)).2) = (Nat.unpair ((m + 1) / 5)).2 := by
             exact ⟨ ih _ ( by linarith [ Nat.div_mul_le_self ( m + 1 ) 5, Nat.unpair_left_le ( ( m + 1 ) / 5 ) ] ), ih _ ( by linarith [ Nat.div_mul_le_self ( m + 1 ) 5, Nat.unpair_right_le ( ( m + 1 ) / 5 ) ] ) ⟩;
-          simp +arith [ *, encodeCodeo ] at * ; omega;
+          simp [ *, encodeCodeo ] at * ; omega;
         · have h_encode_rfind' : encodeCodeo (decodeCodeo ((m + 1) / 5)).rfind' = 4 + (5 * encodeCodeo (decodeCodeo ((m + 1) / 5)) + 4) := by
             rfl;
           grind;
@@ -340,13 +338,11 @@ theorem decodeCodeo_encodeCodeo (c : codeo) : decodeCodeo (encodeCodeo c) = c :=
     apply encodeCodeo_decodeCodeo';
   have h_inj : ∀ c1 c2 : codeo, encodeCodeo c1 = encodeCodeo c2 → c1 = c2 := by
     intros c1 c2 h_eq
-    induction' c1 with c1 ih generalizing c2;
-    all_goals rcases c2 with ( _ | _ | _ | _ | _ | _ | _ | _ | _ ) <;> simp [ encodeCodeo ] at h_eq ⊢;
+    induction c1 generalizing c2;
+    all_goals rcases c2 with ( _ | _ | _ | _ | _ | _ | _ | _ | _ ) <;>
+      simp only [encodeCodeo] at h_eq ⊢;
     any_goals omega;
-    · tauto;
-    · aesop;
-    · aesop;
-    · solve_by_elim;
+    all_goals aesop
   exact h_inj _ _ ( h_encode_decode c |> Eq.symm ))
 
 /-- Returns a code for the constant function outputting a particular natural. -/
@@ -399,7 +395,7 @@ theorem encode_const_step_primrec : Nat.Primrec encode_const_step_fun := by
             intro c; induction c <;>
             simp_all only [Nat.mul_eq, zero_mul]
             · exact Nat.Primrec.const 0;
-            · simp [ add_mul ];
+            · simp only [add_mul, one_mul];
               rename_i n ih;
               have h_add : Nat.Primrec (fun n_1 => n * n_1) → Nat.Primrec (fun n_1 => n_1) → Nat.Primrec (fun n_1 => n * n_1 + n_1) := by
                 intros h1 h2; exact (by
@@ -428,8 +424,9 @@ theorem encode_const_primrec : Nat.Primrec encode_const := by
   have ih_step : Nat.Primrec (Nat.unpaired fun a n => Nat.rec (encodeCodeo codeo.zero) (fun y IH => encode_const_step_fun (Nat.pair a (Nat.pair y IH))) n) := by
     apply_rules [ Nat.Primrec.prec, Nat.Primrec.const ];
     apply encode_const_step_primrec;
-  have h_eq : ∀ n, Nat.unpaired (fun a n => Nat.rec (encodeCodeo codeo.zero) (fun y IH => encode_const_step_fun (Nat.pair a (Nat.pair y IH))) n) (Nat.pair 0 n) = encode_const n := by
-    intro n; induction n <;> simp_all +decide [ Nat.unpair_pair ] ;
+  have h_eq : ∀ n, Nat.unpaired (fun a n => Nat.rec (encodeCodeo codeo.zero)
+  (fun y IH => encode_const_step_fun (Nat.pair a (Nat.pair y IH))) n) (Nat.pair 0 n) = encode_const n := by
+    intro n; induction n <;> simp_all +decide only [Nat.unpaired, Nat.unpair_pair] ;
     unfold encode_const_step_fun encode_const; aesop;
   convert ih_step.comp ( show Nat.Primrec fun n => Nat.pair 0 n from ?_ ) using 1;
   · exact funext fun n => h_eq n ▸ rfl;
@@ -446,9 +443,10 @@ theorem s_inner_primrec : Nat.Primrec s_inner := by
     have h_linear' : Nat.Primrec (fun n => 5 * n + 1) := by
       have h_linear'' : Nat.Primrec (fun n => 5 * n) := by
         have h_mul_const : ∀ k : ℕ, Nat.Primrec (fun n => k * n) := by
-          intro k; induction' k with k ih <;> simp_all [ Nat.succ_mul ] ;
+          intro k; induction k <;> simp_all only [Nat.succ_mul, zero_mul] ;
           · exact Nat.Primrec.const 0;
-          · have h_sum : Nat.Primrec (fun n => k * n) → Nat.Primrec (fun n => n) → Nat.Primrec (fun n => k * n + n) := by
+          · rename_i k ih
+            have h_sum : Nat.Primrec (fun n => k * n) → Nat.Primrec (fun n => n) → Nat.Primrec (fun n => k * n + n) := by
               intro h1 h2
               exact Nat.Primrec.of_eq (Nat.Primrec.comp (Nat.Primrec.add) (h1.pair h2)) (by
               simp [ Nat.unpair_pair ]);
@@ -456,8 +454,9 @@ theorem s_inner_primrec : Nat.Primrec s_inner := by
         exact h_mul_const 5;
       exact Nat.Primrec.succ.comp h_linear'';
     have h_add : Nat.Primrec (fun n => 4 + n) := by
-      exact Nat.Primrec.succ.comp ( Nat.Primrec.succ.comp ( Nat.Primrec.succ.comp ( Nat.Primrec.succ.comp Nat.Primrec.id ) ) ) |> fun h => h.of_eq fun n => by simp +arith +decide only [id_eq,
-        Nat.succ_eq_add_one];
+      exact Nat.Primrec.succ.comp
+        ( Nat.Primrec.succ.comp ( Nat.Primrec.succ.comp ( Nat.Primrec.succ.comp Nat.Primrec.id ) ) )
+         |> fun h => h.of_eq fun n => by grind
     exact h_add.comp h_linear';
   exact h_linear.comp h_pair
 
@@ -523,7 +522,7 @@ theorem exists_code_rel {α : Type} [Primcodable α] (g : α → ℕ →. ℕ) (
     · case mp.rfind f' pf hf =>
       rcases hf with ⟨cg, h⟩
       use (cg.rfind'.comp (id_code.pair codeo.zero))
-      simp [evalo]
+      simp only [evalo, Part.map_eq_map, Part.bind_eq_bind]
       have h_id : ∀ n, evalo g id_code n = Part.some n := by
         intro n; unfold id_code;
         subst h
@@ -536,37 +535,53 @@ theorem exists_code_rel {α : Type} [Primcodable α] (g : α → ℕ →. ℕ) (
               (Part.Dom.bind trivial fun y ↦
                 (evalo g codeo.right n).bind fun y_1 ↦ Part.some (Nat.pair y y_1));
         aesop;
-      ext; aesop;
-      · cases left ;
-        rename_i h
-        subst h
-        convert left_1 using 1;
-        congr;
-        have h_unpair : Nat.unpair (Nat.pair a 0) = (a, 0) := by
-          exact Nat.unpair_pair a 0;
-        convert congr_arg Prod.fst h_unpair.symm using 1;
-      · cases left ;
-        rename_i h
-        subst h
-        have h_m_lt_w1 : m < w_1 := by
-          convert a_1 using 1;
+      ext;
+      subst h
+      simp_all only [Part.map_some, Part.mem_bind_iff, Nat.unpaired, Part.mem_map_iff, Nat.mem_rfind,
+        decide_eq_true_eq, exists_eq_right, decide_eq_false_iff_not]
+      apply Iff.intro
+      · intro a_1
+        obtain ⟨w, h⟩ := a_1
+        obtain ⟨left, right⟩ := h
+        obtain ⟨w_1, h⟩ := right
+        obtain ⟨left_1, right⟩ := h
+        obtain ⟨left_1, right_1⟩ := left_1
+        subst right
+        apply And.intro
+        · cases left ;
+          rename_i a _ h
+          subst h
+          convert left_1 using 1;
+          congr;
           have h_unpair : Nat.unpair (Nat.pair a 0) = (a, 0) := by
-            exact Nat.unpair_pair _ _;
-          exact h_unpair.symm ▸ rfl;
-        obtain ⟨a_2, ha_2⟩ := right_1 h_m_lt_w1;
-        use a_2;
-        simp_all only [not_false_eq_true, and_true]
-        obtain ⟨left, right⟩ := ha_2
-        convert left using 1;
-        congr! 2;
-        · have h_unpair : Nat.unpair (Nat.pair a 0) = (a, 0) := by
             exact Nat.unpair_pair a 0;
           convert congr_arg Prod.fst h_unpair.symm using 1;
-        · simp;
-          have h_unpair : Nat.unpair (Nat.pair a 0) = (a, 0) := by
-            exact Nat.unpair_pair a 0;
-          convert congr_arg Prod.snd h_unpair using 1;
-      · use Nat.pair a 0;
+        · intro m a_1
+          cases left ;
+          rename_i a _ h
+          subst h
+          have h_m_lt_w1 : m < w_1 := by
+            convert a_1 using 1;
+            have h_unpair : Nat.unpair (Nat.pair a 0) = (a, 0) := by
+              exact Nat.unpair_pair _ _;
+            exact h_unpair.symm ▸ rfl;
+          obtain ⟨a_2, ha_2⟩ := right_1 h_m_lt_w1;
+          use a_2;
+          simp_all only [not_false_eq_true, and_true]
+          obtain ⟨left, right⟩ := ha_2
+          convert left using 1;
+          congr! 2;
+          · have h_unpair : Nat.unpair (Nat.pair a 0) = (a, 0) := by
+              exact Nat.unpair_pair a 0;
+            convert congr_arg Prod.fst h_unpair.symm using 1;
+          · simp only [Nat.left_eq_add];
+            have h_unpair : Nat.unpair (Nat.pair a 0) = (a, 0) := by
+              exact Nat.unpair_pair a 0;
+            convert congr_arg Prod.snd h_unpair using 1;
+      · intro a_1
+        obtain ⟨left, right⟩ := a_1
+        rename_i a b
+        use Nat.pair a 0;
         simp_all only [Nat.unpair_pair, add_zero, exists_eq_right, implies_true, and_self, and_true]
         exact ⟨ ⟨ trivial, trivial ⟩, rfl ⟩
   · rintro ⟨c, rfl⟩
@@ -593,13 +608,9 @@ theorem exists_code_rel {α : Type} [Primcodable α] (g : α → ℕ →. ℕ) (
     | pair cf cg pf pg =>
       exact pf.pair pg
     | comp cf cg pf pg =>
-      apply RecursiveIn.comp
-      exact pf
-      exact pg
+      apply RecursiveIn.comp <;> assumption
     | prec cf cg pf pg =>
-      apply RecursiveIn.prec
-      exact pf
-      exact pg
+      apply RecursiveIn.prec <;> assumption
     | rfind' cf pf =>
       apply rfind'o
       exact pf

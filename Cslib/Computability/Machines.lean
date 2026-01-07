@@ -137,9 +137,6 @@ def BinSeq.ofNat : Nat → BinSeq
   | n + 1 =>
     if (n + 1) % 2 = 1 then Cons false (ofNat ((n + 1) / 2))
     else Cons true (ofNat ((n + 1) / 2 - 1))
-decreasing_by
-· grind
-· omega
 
 /-
 Round trip property: ofNat (toNat σ) = σ.
