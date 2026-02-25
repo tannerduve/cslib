@@ -459,6 +459,10 @@ lemma par_le_par {G H K L : Fact P} (hGK : G ≤ K) (hHL : H ≤ L) : (G ⅋ H) 
 
 lemma par_comm (G H : Fact P) : (G ⅋ H) = (H ⅋ G) := by simp [par_of_tensor, tensor_comm]
 
+instance : Std.Commutative (α := Fact P) (· ⅋ ·) := ⟨par_comm⟩
+
+instance : Std.Associative (α := Fact P) (· ⅋ ·) := ⟨fun _ _ _ => par_assoc⟩
+
 /--
 Linear implication between facts,
 defined as the dual of the orthogonal of the pointwise product.
