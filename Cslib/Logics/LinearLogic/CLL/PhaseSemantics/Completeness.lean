@@ -117,7 +117,6 @@ theorem one_valid (M : Type*) [PhaseSpace M] : (1 : Fact M).IsValid := by
 
 theorem quest_contract_le {M : Type*} [PhaseSpace M] (G : Fact M) : (PhaseSpace.Fact.parr
 (PhaseSpace.Fact.quest G) (PhaseSpace.Fact.quest G) : Fact M) ≤ PhaseSpace.Fact.quest G := by
-  classical
   intro m hm
   change m ∈ ((PhaseSpace.Fact.parr (PhaseSpace.Fact.quest G) (PhaseSpace.Fact.quest G) : Fact M) :
   Set M) at hm
@@ -148,6 +147,18 @@ theorem quest_le {M : Type*} [PhaseSpace M] (G : Fact M) : G ≤ PhaseSpace.Fact
   intro y hy hyI
   have : y * x ∈ PhaseSpace.bot := hy x hx
   simpa [mul_comm] using this
+
+theorem bot_le_quest {M : Type*} [PhaseSpace M] (G : Fact M) :
+    (⊥ : Fact M) ≤ PhaseSpace.Fact.quest G := by
+  intro m hm
+  change m ∈ (((((G : Fact M) : Set M)⫠) ∩ PhaseSpace.I (P := M))⫠ : Set M)
+  · change m ∈ (PhaseSpace.bot : Set M) at hm
+    simp only [PhaseSpace.orthogonal_def, Set.mem_setOf_eq] at *
+    intro x hx
+    rcases hx with ⟨-, hxI⟩
+    have hx1 : x ∈ (1 : Fact M) := hxI.2
+    have hxm : x * m ∈ PhaseSpace.bot := (PhaseSpace.mem_one (P := M) (p := x)).1 hx1 m hm
+    simpa [mul_comm] using hxm
 
 theorem bang_valid_of_allQuest {M : Type*} [PhaseSpace M] {v : Atom → Fact M} {a : Proposition Atom} {Γ : Sequent Atom} : Γ.allQuest → (interpProp (Atom:=Atom) (M:=M) v a ⅋ interpSequent (Atom:=Atom) M v Γ).IsValid → ((PhaseSpace.Fact.bang (interpProp (Atom:=Atom) (M:=M) v a)) ⅋ interpSequent (Atom:=Atom) M v Γ).IsValid := by
   -- Soundness of **promotion** in a `?`-context.
@@ -291,56 +302,228 @@ G.IsValid → (PhaseSpace.Fact.quest G).IsValid := by
 
 theorem soundness (Γ : Sequent Atom) : Γ.Provable → ∀ (M : Type*) [PhaseSpace M]
 (v : Atom → Fact M), (interpSequent (Atom:=Atom) M v Γ).IsValid := by
-  -- Prove soundness by induction on a proof term `p : Proof Γ`.
-  --
-  -- Skeleton:
-  -- ```lean
-  -- intro hΓ M _ v
-  -- -- get explicit proof object
-  -- have p : Proof Γ := (Sequent.Provable.toProof hΓ)
-  -- induction p with
-  -- | ax =>
-  --     -- goal: interpSequent {a,a⫠} is valid
-  --     simpa [interpSequent_cons, interpSequent_nil, interpProp_dual] using
-  --       (ax_valid (Atom:=Atom) (M:=M) (v:=v) (A:=a))
-  -- | cut p q ihp ihq =>
-  --     -- rewrite premises with interpSequent_cons and conclusion with interpSequent_add
-  --     -- then apply cut_valid
-  -- | one =>
-  --     -- use interpSequent_cons + interpProp_one + Fact.par_bot then `one_valid`
-  -- | bot p ih =>
-  --     -- simp [interpSequent_cons, interpProp_bot] at goal; reduce to ih
-  -- | parr p ih =>
-  --     -- simp [interpSequent_cons, interpProp_parr] and use associativity/commutativity of `⅋`
-  -- | tensor p q ihp ihq =>
-  --     -- after simp [interpSequent_cons, interpSequent_add, interpProp_tensor]
-  --     -- reduce to `Fact.tensor_le_tensor` + IsValid_monotone (as in reference proof)
-  -- | oplus₁ p ih =>
-  --     -- use `Fact.le_plus_left` + `Fact.par_le_par` + IsValid_monotone
-  -- | oplus₂ p ih =>
-  --     -- use `Fact.le_plus_right` + `Fact.par_le_par` + IsValid_monotone
-  -- | with p q ihp ihq =>
-  --     -- simp [interpProp_with]; use `Fact.valid_with` to split
-  -- | top =>
-  --     -- simp [interpProp_top]
-  -- | quest p ih =>
-  --     -- simp [interpProp_quest]; exact quest_valid_of_valid ih
-  -- | weaken p ih =>
-  --     -- show interpSequent Γ ≤ interpSequent (ʔa::ₘΓ) using bot_le_quest and Fact.bot_par,
-  --     -- then IsValid_monotone
-  -- | contract p ih =>
-  --     -- use quest_contract_le lifted under `⅋ interpSequent Γ` + IsValid_monotone
-  -- | bang hΓ p ih =>
-  --     -- simp [interpProp_bang, interpSequent_cons] at ih ⊢
-  --     -- apply bang_valid_of_allQuest hΓ ih
-  -- ```
-  --
-  -- Notes:
-  -- - Prefer `simp only [...]` with the blueprint lemmas listed above.
-  -- - Use `Fact.par_assoc`/`Fact.par_comm`/`Fact.par_bot`/`Fact.bot_par` from `PhaseSpace.Fact` to normalize `⅋` folds.
-  -- - For weaken/contract, use `Fact.par_le_par` from the library plus `bot_le_quest` / `quest_contract_le`.
-  -- - The only genuinely nontrivial case should be `bang`, handled by `bang_valid_of_allQuest`.
-  sorry
+  intro hΓ M _ v
+  classical
+  rcases hΓ with ⟨p⟩
+  induction p with
+  | ax =>
+      rename_i a
+      have hpair : ({a, a⫠} : Sequent Atom) = a ::ₘ ({a⫠} : Sequent Atom) := by simp
+      have hsingle :
+          interpSequent (Atom := Atom) M v ({a⫠} : Sequent Atom) =
+            (interpProp (Atom := Atom) (M := M) v a)ᗮ := by
+        have : ({a⫠} : Sequent Atom) = a⫠ ::ₘ (0 : Sequent Atom) := by simp
+        -- compute the singleton sequent interpretation without unfolding orthogonals
+        rw [this, interpSequent_cons, interpSequent_nil]
+        -- `⟦a⫠⟧ ⅋ ⊥ = ⟦a⫠⟧ = (⟦a⟧)ᗮ`
+        rw [par_bot]
+        simpa using (interpProp_dual (Atom := Atom) (M := M) (v := v) (A := a))
+      -- rewrite `interpSequent {a, a⫠}` to `⟦a⟧ ⅋ ⟦a⟧ᗮ` and apply `ax_valid`
+      simpa [hpair, interpSequent_cons, hsingle] using
+        (ax_valid (Atom := Atom) (M := M) (v := v) (A := a))
+  | cut p q ihp ihq =>
+      rename_i a Γ Δ
+      have hΓ :
+          (interpProp (Atom := Atom)
+          (M := M) v a ⅋ interpSequent (Atom := Atom) M v Γ).IsValid := by
+        simpa [interpSequent_cons] using ihp
+      have hΔ :
+          ((interpProp (Atom := Atom)
+          (M := M) v a)ᗮ ⅋ interpSequent (Atom := Atom) M v Δ).IsValid := by
+        simpa [interpSequent_cons, interpProp_dual] using ihq
+      have hcut :
+          (interpSequent (Atom := Atom) M v Γ ⅋ interpSequent (Atom := Atom) M v Δ).IsValid :=
+        cut_valid (Atom := Atom) (M := M) (v := v) (A := a) (Γ := Γ) (Δ := Δ) hΓ hΔ
+      simpa [interpSequent_add] using hcut
+  | one =>
+      have hs : ({(1 : Proposition Atom)} : Sequent Atom) =
+      (1 : Proposition Atom) ::ₘ (0 : Sequent Atom) := by
+        simp
+      rw [hs, interpSequent_cons, interpSequent_nil]
+      have hone :
+          (interpProp (Atom := Atom)
+          (M := M) v (1 : Proposition Atom) : Fact M) = (1 : Fact M) := by
+        simp_all only [Multiset.cons_zero]
+        rfl
+      rw [hone, par_bot]
+      simp [Fact.IsValid]
+  | bot p ih =>
+      rename_i Γ
+      -- `interpSequent (⊥ ::ₘ Γ) = ⟦⊥⟧ ⅋ interpSequent Γ = ⊥ ⅋ interpSequent Γ = interpSequent Γ`.
+      rw [interpSequent_cons]
+      -- simplify `⟦⊥⟧v` to `⊥`
+      have hbot : (interpProp (Atom := Atom)
+      (M := M) v (⊥ : Proposition Atom) : Fact M) = (⊥ : Fact M) := by
+        simpa using (interpProp_bot (Atom := Atom) (M := M) (v := v))
+      rw [hbot]
+      simpa [bot_par] using ih
+  | parr p ih =>
+      rename_i a b Γ
+      simpa [interpSequent_cons, interpProp_parr, par_assoc] using ih
+  | tensor p q ihp ihq =>
+      rename_i a Γ b Δ
+      let A : Fact M := interpProp (Atom := Atom) (M := M) v a
+      let B : Fact M := interpProp (Atom := Atom) (M := M) v b
+      let G : Fact M := interpSequent (Atom := Atom) M v Γ
+      let H : Fact M := interpSequent (Atom := Atom) M v Δ
+      have hAG : (A ⅋ G).IsValid := by
+        simpa [A, G, interpSequent_cons] using ihp
+      have hBH : (B ⅋ H).IsValid := by
+        simpa [B, H, interpSequent_cons] using ihq
+      have hA : (Aᗮ : Set M) ⊆ (G : Set M) := by
+        have h1 : (1 : M) ∈ (Aᗮ ⊸ G : Fact M) := by
+          simpa [A, G, par_of_linImpl] using hAG
+        have himp : imp (Aᗮ : Set M) (G : Set M) (1 : M) :=
+          (linImpl_iff_implies (p := (1 : M)) (G := Aᗮ) (H := G)).1 h1
+        intro x hx
+        have : (1 : M) * x ∈ (G : Set M) := himp x hx
+        simpa [one_mul] using this
+      have hB : (Bᗮ : Set M) ⊆ (H : Set M) := by
+        have h1 : (1 : M) ∈ (Bᗮ ⊸ H : Fact M) := by
+          simpa [B, H, par_of_linImpl] using hBH
+        have himp : imp (Bᗮ : Set M) (H : Set M) (1 : M) :=
+          (linImpl_iff_implies (p := (1 : M)) (G := Bᗮ) (H := H)).1 h1
+        intro x hx
+        have : (1 : M) * x ∈ (H : Set M) := himp x hx
+        simpa [one_mul] using this
+      have hA_le : (Aᗮ : Fact M) ≤ G := fun _ hx => hA hx
+      have hB_le : (Bᗮ : Fact M) ≤ H := fun _ hx => hB hx
+      have hpar : (Aᗮ ⅋ Bᗮ : Fact M) ≤ (G ⅋ H) := par_le_par hA_le hB_le
+      have himp :
+          imp ((Aᗮ ⅋ Bᗮ : Fact M) : Set M) ((G ⅋ H : Fact M) : Set M) (1 : M) := by
+        intro x hx
+        have : x ∈ (G ⅋ H : Fact M) := hpar hx
+        simpa [one_mul] using this
+      have hlin :
+          (1 : M) ∈ ((Aᗮ ⅋ Bᗮ : Fact M) ⊸ (G ⅋ H : Fact M) : Fact M) :=
+        (linImpl_iff_implies (p := (1 : M)) (G := (Aᗮ ⅋ Bᗮ : Fact M))
+        (H := (G ⅋ H : Fact M))).2 himp
+      have hgoal : ((A ⊗ B) ⅋ (G ⅋ H) : Fact M).IsValid := by
+        have : (1 : M) ∈ (((A ⊗ B) ⅋ (G ⅋ H) : Fact M) : Set M) := by
+          simpa [par_of_linImpl, neg_tensor] using hlin
+        exact this
+      simpa [interpSequent_cons, interpSequent_add,
+      interpProp_tensor, A, B, G, H, par_assoc] using hgoal
+  | oplus₁ p ih =>
+      rename_i a Γ b
+      have h :
+          (interpProp (Atom := Atom)
+          (M := M) v a ⅋ interpSequent (Atom := Atom) M v Γ).IsValid := by
+        simpa [interpSequent_cons] using ih
+      have ha :
+          (interpProp (Atom := Atom) (M := M) v a : Fact M) ≤
+            (interpProp (Atom := Atom) (M := M) v (a ⊕ b) : Fact M) := by
+        simpa [interpProp_oplus (Atom := Atom) (M := M) v a b] using
+          (le_plus_left (G := (interpProp (Atom := Atom) (M := M) v a : Fact M))
+            (H := (interpProp (Atom := Atom) (M := M) v b : Fact M)))
+      have hpar :
+          (interpProp (Atom := Atom) (M := M) v a ⅋ interpSequent (Atom := Atom) M v Γ : Fact M) ≤
+            (interpProp (Atom := Atom)
+            (M := M) v (a ⊕ b) ⅋ interpSequent (Atom := Atom) M v Γ : Fact M) :=
+        par_le_par ha (le_rfl)
+      have := IsValid_monotone (M := M) hpar h
+      simpa [interpSequent_cons, interpProp_oplus] using this
+  | oplus₂ p ih =>
+      rename_i a Γ b
+      have h :
+          (interpProp (Atom := Atom)
+          (M := M) v a ⅋ interpSequent (Atom := Atom) M v Γ).IsValid := by
+        simpa [interpSequent_cons] using ih
+      have ha :
+          (interpProp (Atom := Atom) (M := M) v a : Fact M) ≤
+            (interpProp (Atom := Atom) (M := M) v (a ⊕ b) : Fact M) := by
+        simpa [interpProp_oplus (Atom := Atom) (M := M) v a b] using
+          (le_plus_left (G := (interpProp (Atom := Atom) (M := M) v a : Fact M))
+            (H := (interpProp (Atom := Atom) (M := M) v b : Fact M)))
+      have hpar :
+          (interpProp (Atom := Atom) (M := M) v a ⅋ interpSequent (Atom := Atom) M v Γ : Fact M) ≤
+            (interpProp (Atom := Atom)
+            (M := M) v (a ⊕ b) ⅋ interpSequent (Atom := Atom) M v Γ : Fact M) :=
+        par_le_par ha (le_rfl)
+      have := IsValid_monotone (M := M) hpar h
+      simpa [interpSequent_cons, interpProp_oplus, plus_comm] using this
+  | «with» p q ihp ihq =>
+      rename_i a Γ b
+      have ha :
+          (interpProp (Atom := Atom)
+          (M := M) v a ⅋ interpSequent (Atom := Atom) M v Γ).IsValid := by
+        simpa [interpSequent_cons] using ihp
+      have hb :
+          (interpProp (Atom := Atom)
+          (M := M) v b ⅋ interpSequent (Atom := Atom) M v Γ).IsValid := by
+        simpa [interpSequent_cons] using ihq
+      have : ((interpProp (Atom := Atom) (M := M) v (a & b) : Fact M) ⅋
+          interpSequent (Atom := Atom) M v Γ).IsValid := by
+        simpa [interpProp_with, with_par_distrib] using (And.intro ha hb)
+      simpa [interpSequent_cons, interpProp_with] using this
+  | top =>
+      rename_i Γ
+      -- `⊤ ⅋ G = ⊤` and `⊤` is valid
+      rw [interpSequent_cons]
+      have htop : (interpProp (Atom := Atom)
+      (M := M) v (⊤ : Proposition Atom) : Fact M) = (⊤ : Fact M) := by
+        simpa using (interpProp_top (Atom := Atom) (M := M) (v := v))
+      rw [htop]
+      simp [top_par, Fact.IsValid]
+  | quest p ih =>
+      rename_i a Γ
+      have h :
+          (interpProp (Atom := Atom)
+          (M := M) v a ⅋ interpSequent (Atom := Atom) M v Γ).IsValid := by
+        simpa [interpSequent_cons] using ih
+      have hle :
+          (interpProp (Atom := Atom) (M := M) v a ⅋ interpSequent (Atom := Atom) M v Γ : Fact M) ≤
+            (PhaseSpace.Fact.quest (interpProp (Atom := Atom) (M := M) v a) ⅋
+              interpSequent (Atom := Atom) M v Γ : Fact M) :=
+        par_le_par (quest_le (M := M) (G := interpProp (Atom := Atom) (M := M) v a)) (le_rfl)
+      have := IsValid_monotone (M := M) hle h
+      simpa [interpSequent_cons, interpProp_quest] using this
+  | weaken p ih =>
+      rename_i Γ a
+      have h : (interpSequent (Atom := Atom) M v Γ).IsValid := ih
+      have hle :
+          (interpSequent (Atom := Atom) M v Γ : Fact M) ≤
+            (PhaseSpace.Fact.quest (interpProp (Atom := Atom) (M := M) v a) ⅋
+              interpSequent (Atom := Atom) M v Γ : Fact M) := by
+        simpa [bot_par] using
+          (par_le_par (bot_le_quest (M := M) (G := interpProp (Atom := Atom) (M := M) v a))
+            (le_rfl) : ((⊥ : Fact M) ⅋ interpSequent (Atom := Atom) M v Γ : Fact M) ≤ _)
+      have := IsValid_monotone (M := M) hle h
+      simpa [interpSequent_cons, interpProp_quest] using this
+  | contract p ih =>
+      rename_i a Γ
+      have h :
+          (PhaseSpace.Fact.quest (interpProp (Atom := Atom) (M := M) v a) ⅋
+              (PhaseSpace.Fact.quest (interpProp (Atom := Atom) (M := M) v a) ⅋
+                interpSequent (Atom := Atom) M v Γ) : Fact M).IsValid := by
+        simpa [interpSequent_cons, interpProp_quest, par_assoc] using ih
+      have hle :
+          (PhaseSpace.Fact.quest (interpProp (Atom := Atom) (M := M) v a) ⅋
+              (PhaseSpace.Fact.quest (interpProp (Atom := Atom) (M := M) v a) ⅋
+                interpSequent (Atom := Atom) M v Γ) : Fact M)
+            ≤
+          (PhaseSpace.Fact.quest (interpProp (Atom := Atom) (M := M) v a) ⅋
+              interpSequent (Atom := Atom) M v Γ : Fact M) := by
+        have h' :
+            ((PhaseSpace.Fact.quest (interpProp (Atom := Atom) (M := M) v a) ⅋
+                  PhaseSpace.Fact.quest (interpProp (Atom := Atom) (M := M) v a)) ⅋
+                interpSequent (Atom := Atom) M v Γ : Fact M)
+              ≤
+            (PhaseSpace.Fact.quest (interpProp (Atom := Atom) (M := M) v a) ⅋
+                interpSequent (Atom := Atom) M v Γ : Fact M) :=
+          par_le_par (quest_contract_le (M := M) (G := interpProp (Atom := Atom) (M := M) v a))
+          (le_rfl)
+        simpa [par_assoc] using h'
+      have := IsValid_monotone (M := M) hle h
+      simpa [interpSequent_cons, interpProp_quest] using this
+  | bang hQuestCtx p ih =>
+      rename_i Δ A
+      have h :
+          (interpProp (Atom := Atom)
+          (M := M) v A ⅋ interpSequent (Atom := Atom) M v Δ).IsValid := by
+        simpa [interpSequent_cons] using ih
+      have := bang_valid_of_allQuest (Atom := Atom) (M := M) (v := v) (a := A) (Γ := Δ) hQuestCtx h
+      simpa [interpSequent_cons, interpProp_bang] using this
 
 @[reducible] def CanonM (Atom : Type u) : Type u := Multiplicative (Sequent Atom)
 
