@@ -92,6 +92,15 @@ def Proposition.negative : Proposition Atom → Bool
   | quest _ => true
   | _ => false
 
+/--
+Whether a proposition is in the multiplicative-additive fragment (MALL), i.e. it
+contains no exponentials.
+-/
+def Proposition.IsMALL : Proposition Atom → Prop
+  | .atom _ | .atomDual _ | .one | .bot | .top | .zero => True
+  | .tensor a b | .parr a b | .oplus a b | .with a b => a.IsMALL ∧ b.IsMALL
+  | .bang _ | .quest _ => False
+
 /-- Whether a `Proposition` is positive is decidable. -/
 instance Proposition.positive_decidable (a : Proposition Atom) : Decidable a.positive :=
   a.positive.decEq true
@@ -150,6 +159,10 @@ def Proposition.linImpl (a b : Proposition Atom) : Proposition Atom := a⫠ ⅋ 
 
 /-- A sequent in CLL is a multiset of propositions. -/
 abbrev Sequent Atom := Multiset (Proposition Atom)
+
+/-- A sequent is MALL if every proposition in it is MALL. -/
+def Sequent.IsMALL (Γ : Sequent Atom) : Prop :=
+  ∀ A ∈ Γ, (A : Proposition Atom).IsMALL
 
 /-- Checks that all propositions in a sequent `Γ` are question marks. -/
 def Sequent.allQuest (Γ : Sequent Atom) :=
