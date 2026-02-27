@@ -313,12 +313,9 @@ theorem soundness (Γ : Sequent Atom) : Γ.Provable → ∀ (M : Type*) [PhaseSp
           interpSequent (Atom := Atom) M v ({a⫠} : Sequent Atom) =
             (interpProp (Atom := Atom) (M := M) v a)ᗮ := by
         have : ({a⫠} : Sequent Atom) = a⫠ ::ₘ (0 : Sequent Atom) := by simp
-        -- compute the singleton sequent interpretation without unfolding orthogonals
         rw [this, interpSequent_cons, interpSequent_nil]
-        -- `⟦a⫠⟧ ⅋ ⊥ = ⟦a⫠⟧ = (⟦a⟧)ᗮ`
         rw [par_bot]
         simpa using (interpProp_dual (Atom := Atom) (M := M) (v := v) (A := a))
-      -- rewrite `interpSequent {a, a⫠}` to `⟦a⟧ ⅋ ⟦a⟧ᗮ` and apply `ax_valid`
       simpa [hpair, interpSequent_cons, hsingle] using
         (ax_valid (Atom := Atom) (M := M) (v := v) (A := a))
   | cut p q ihp ihq =>
@@ -348,17 +345,13 @@ theorem soundness (Γ : Sequent Atom) : Γ.Provable → ∀ (M : Type*) [PhaseSp
       rw [hone, par_bot]
       simp [Fact.IsValid]
   | bot p ih =>
-      rename_i Γ
-      -- `interpSequent (⊥ ::ₘ Γ) = ⟦⊥⟧ ⅋ interpSequent Γ = ⊥ ⅋ interpSequent Γ = interpSequent Γ`.
       rw [interpSequent_cons]
-      -- simplify `⟦⊥⟧v` to `⊥`
       have hbot : (interpProp (Atom := Atom)
       (M := M) v (⊥ : Proposition Atom) : Fact M) = (⊥ : Fact M) := by
         simpa using (interpProp_bot (Atom := Atom) (M := M) (v := v))
       rw [hbot]
-      simpa [bot_par] using ih
+      simp_all only [bot_par]
   | parr p ih =>
-      rename_i a b Γ
       simpa [interpSequent_cons, interpProp_parr, par_assoc] using ih
   | tensor p q ihp ihq =>
       rename_i a Γ b Δ
@@ -458,7 +451,6 @@ theorem soundness (Γ : Sequent Atom) : Γ.Provable → ∀ (M : Type*) [PhaseSp
       simpa [interpSequent_cons, interpProp_with] using this
   | top =>
       rename_i Γ
-      -- `⊤ ⅋ G = ⊤` and `⊤` is valid
       rw [interpSequent_cons]
       have htop : (interpProp (Atom := Atom)
       (M := M) v (⊤ : Proposition Atom) : Fact M) = (⊤ : Fact M) := by
