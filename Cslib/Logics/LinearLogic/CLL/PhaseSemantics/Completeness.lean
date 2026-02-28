@@ -160,27 +160,200 @@ theorem bot_le_quest {M : Type*} [PhaseSpace M] (G : Fact M) :
     have hxm : x * m ∈ PhaseSpace.bot := (PhaseSpace.mem_one (P := M) (p := x)).1 hx1 m hm
     simpa [mul_comm] using hxm
 
-theorem bang_valid_of_allQuest {M : Type*} [PhaseSpace M] {v : Atom → Fact M} {a : Proposition Atom} {Γ : Sequent Atom} : Γ.allQuest → (interpProp (Atom:=Atom) (M:=M) v a ⅋ interpSequent (Atom:=Atom) M v Γ).IsValid → ((PhaseSpace.Fact.bang (interpProp (Atom:=Atom) (M:=M) v a)) ⅋ interpSequent (Atom:=Atom) M v Γ).IsValid := by
-  -- Soundness of **promotion** in a `?`-context.
-  --
-  -- Goal after unfolding `Fact.IsValid` is membership `1 ∈ !⟦a⟧ ⅋ ⟦Γ⟧` assuming `1 ∈ ⟦a⟧ ⅋ ⟦Γ⟧` and `Γ.allQuest`.
-  --
-  -- Key idea: `Γ.allQuest` means every element of `Γ` is a `Proposition.quest _`; hence every factor in `interpSequent M v Γ` is of the form `ʔG`, so `interpSequent M v Γ` is a `⅋`-combination of `ʔ`-facts. Use the semantic structural laws already available:
-  -- - dereliction `quest_le` (to move from a fact into its `ʔ`),
-  -- - weakening `bot_le_quest` (to introduce extra `ʔ` factors if needed),
-  -- - contraction `quest_contract_le` (to eliminate duplicates under `⅋`).
-  -- Together these show that in a `?`-context the sequent interpretation is **insensitive** to replacing `⟦a⟧` by `!⟦a⟧`.
-  --
-  -- Suggested formal path:
-  -- 1. Unfold `PhaseSpace.Fact.bang` and coe via `dualFact_coe`, so the goal becomes a statement about orthogonals (`⫠`) and the idempotent set `I`.
-  -- 2. Use `Γ.allQuest` to obtain (by induction on the multiset using `Multiset.induction_on`) that `interpSequent M v Γ ≤ PhaseSpace.Fact.quest (interpSequent M v Γ)` and also a contraction property for the `⅋`-fold. (You can prove intermediate `≤` statements inside the proof using `quest_le`, `bot_le_quest`, `quest_contract_le`, and `Fact.par_le_par` from the library.)
-  -- 3. Convert the assumption validity into a monotone form using `IsValid_monotone` and the `≤` results built in step 2.
-  -- 4. Finish with `aesop`/`grind` after unfolding orthogonality (`PhaseSpace.orthogonal_def`) and basic par simp lemmas (`Fact.par_assoc`, `Fact.par_comm`, `Fact.par_bot`, `Fact.bot_par`).
-  --
-  -- If this is still hard, try proving the contrapositive using orthogonality: show `1 ∈ (!G ⅋ H)` by showing `1 ∈ ((G ⅋ H))` and `(!G ⅋ H) = (G ⅋ H)` in a `?`-context.
-  --
-  -- Also consider using the already proven duality lemma `bang_neg`/`quest_neg` (available from imports, even if not a blueprint dependency) to transport the problem to a statement about `ʔ`.
+theorem I_mul_mem {M : Type*} [PhaseSpace M] {a b : M} : a ∈ PhaseSpace.I (P := M) → b ∈ PhaseSpace.I (P := M) → (a * b) ∈ PhaseSpace.I (P := M) := by
+  intro ha hb
+  simp [PhaseSpace.I, PhaseSpace.idempotentsIn] at ha hb ⊢
+  constructor
+  · -- idempotent component
+    exact IsIdempotentElem.mul ha.1 hb.1
+  · -- closure under multiplication on ⊥
+    intro x hx
+    have hb' : b * x ∈ (PhaseSpace.bot : Set M) := hb.2 x hx
+    have ha' : a * (b * x) ∈ (PhaseSpace.bot : Set M) := ha.2 (b * x) hb'
+    simpa [mul_assoc] using ha'
+
+theorem allQuest_cons {A : Proposition Atom} {Γ : Sequent Atom} : Sequent.allQuest (Atom := Atom) (A ::ₘ Γ) ↔ (A matches Proposition.quest _) ∧ Sequent.allQuest (Atom := Atom) Γ := by
+  -- unfold and simplify `Sequent.allQuest` on a cons
+  simp [Sequent.allQuest, Multiset.map_cons, Multiset.fold_cons_left, Bool.and_eq_true]
+  intro h
+  rfl
+
+theorem par_valid_iff_neg_le {M : Type*} [PhaseSpace M] {G H : Fact M} : (G ⅋ H).IsValid ↔ (Gᗮ ≤ H) := by
+  constructor
+  · intro h
+    -- unfold validity of par
+    have h1 : (1 : M) ∈ (G ⅋ H : Set M) := by
+      simpa [Fact.IsValid] using h
+    have h2 : (1 : M) ∈ (Gᗮ ⊸ H : Fact M) := by
+      simpa [Fact.par_of_linImpl] using h1
+    have h3 : imp (Gᗮ : Set M) (H : Set M) (1 : M) := by
+      -- membership in linImpl is implication
+      exact (Fact.linImpl_iff_implies (G := Gᗮ) (H := H) (p := (1 : M))).1 h2
+    -- convert implication at 1 into subset
+    have hsub : (Gᗮ : Set M) ⊆ (H : Set M) := by
+      intro x hx
+      have hx' := h3 x hx
+      simpa [PhaseSpace.imp, one_mul] using hx'
+    -- Fact order is set inclusion
+    simpa using hsub
+  · intro hle
+    -- prove validity from inclusion
+    have hsub : (Gᗮ : Set M) ⊆ (H : Set M) := by
+      simpa using hle
+    have himp : imp (Gᗮ : Set M) (H : Set M) (1 : M) := by
+      intro x hx
+      have : x ∈ (H : Set M) := hsub hx
+      simpa [PhaseSpace.imp, one_mul] using this
+    have hmem : (1 : M) ∈ (Gᗮ ⊸ H : Fact M) := by
+      exact (Fact.linImpl_iff_implies (G := Gᗮ) (H := H) (p := (1 : M))).2 himp
+    have hmem' : (1 : M) ∈ (G ⅋ H : Set M) := by
+      simpa [Fact.par_of_linImpl] using hmem
+    simpa [Fact.IsValid] using hmem'
+
+theorem quest_closed_parr_quest_quest {M : Type*} [PhaseSpace M] {G H : Fact M} : (ʔ ((ʔ G : Fact M) ⅋ (ʔ H : Fact M)) : Fact M) ≤ ((ʔ G : Fact M) ⅋ (ʔ H : Fact M)) := by
+  -- Goal: show a `⅋`-combination of `?`-facts is itself `?`-closed.
+  -- 
+  -- Let `A := (ʔ G : Fact M)`, `B := (ʔ H : Fact M)`, `P := (A ⅋ B : Fact M)`.
+  -- We need `ʔ P ≤ P`.
+  -- 
+  -- Work in set-membership form:
+  -- `intro m hm;` then `change` both sides to membership in the underlying `Set M`.
+  -- Unfold with
+  -- `simp only [PhaseSpace.Fact.quest, PhaseSpace.Fact.parr, PhaseSpace.orthogonal_def,
+  --   PhaseSpace.dualFact_coe, PhaseSpace.I, PhaseSpace.idempotentsIn,
+  --   SetLike.mem_coe, Set.mem_inter_iff, Set.mem_mul, Set.mem_setOf_eq,
+  --   forall_exists_index, and_imp]`.
+  -- 
+  -- At this point:
+  -- - `hm` gives a condition of the form `∀ x, x ∈ P⫠ → x ∈ I → m*x ∈ bot`.
+  -- - The goal is `∀ y, y ∈ (A⫠ * B⫠) → m*y ∈ bot` (since `P` is an orthogonal of that product).
+  -- 
+  -- Key trick (similar to the existing proof of `quest_contract_le`):
+  -- - Use `PhaseSpace.orth_extensive` to move elements into a double-orthogonal when needed.
+  -- - Use that `I` is closed under multiplication (use `I_mul_mem`) and that elements of `I` are idempotent.
+  -- - When you obtain `m * (x*x)` in `bot`, rewrite with idempotence `x*x = x` to finish.
+  -- 
+  -- If automation gets stuck, mirror the structure of `quest_contract_le`:
+  -- construct the appropriate `x ∈ I` (built out of the `I`-witnesses you get from the two `?`-factors) and feed it to `hm`.
   sorry
+
+theorem quest_closed_of_allQuest {M : Type*} [PhaseSpace M] {v : Atom → Fact M} {Γ : Sequent Atom} : Γ.allQuest → (ʔ (interpSequent (Atom:=Atom) M v Γ) : Fact M) ≤ interpSequent (Atom:=Atom) M v Γ := by
+  intro hall
+  revert hall
+  refine Multiset.induction_on Γ ?_ ?_
+  · intro _
+    -- base case Γ = 0
+    -- show ?⊥ ≤ ⊥ by unfolding everything
+    simp [interpSequent_nil, PhaseSpace.Fact.quest, PhaseSpace.dualFact_coe,
+      PhaseSpace.orthogonal_def, PhaseSpace.I, PhaseSpace.idempotentsIn]
+    intro x hx
+    -- hx : x ∈ ({m | ...} ∩ {m | ...})⫠, need x ∈ bot
+    -- instantiate the universal property with 1, which is in the intersection
+    have h1 : (1 : M) ∈ ({m : M | ∀ x ∈ (⊥ : Fact M), m * x ∈ bot} ∩
+        {m : M | IsIdempotentElem m ∧ ∀ x ∈ bot, m * x ∈ bot}) := by
+      constructor
+      · intro y hy
+        -- since y ∈ ⊥ means y ∈ bot
+        simpa using hy
+      · constructor
+        · -- 1 is idempotent
+          simpa [IsIdempotentElem]
+        · intro y hy
+          -- hy : y ∈ bot
+          simpa using hy
+    have hx1 := hx (1 : M) h1
+    -- simplify x * 1
+    simpa using hx1
+  · intro A Γ ih hall
+    -- step case Γ = A ::ₘ Γ
+    rcases (allQuest_cons (Atom := Atom) (A := A) (Γ := Γ)).1 hall with ⟨hA, hall'⟩
+    -- A must be a quest proposition
+    cases A <;> simp at hA
+    case quest B =>
+      have hIH : (ʔ (interpSequent (Atom := Atom) M v Γ) : Fact M) ≤
+          interpSequent (Atom := Atom) M v Γ := ih hall'
+      have htail : interpSequent (Atom := Atom) M v Γ =
+          (ʔ (interpSequent (Atom := Atom) M v Γ) : Fact M) := by
+        apply le_antisymm
+        · exact quest_le _
+        · exact hIH
+      -- unfold the interpretation of the cons sequent
+      simp [interpSequent_cons, interpProp_quest]
+      -- rewrite the tail interpretation as a quest once
+      rw [htail]
+      -- close by quest-closure of parr of quests
+      simpa using (quest_closed_parr_quest_quest (M := M)
+        (G := interpProp (Atom := Atom) (M := M) v B)
+        (H := interpSequent (Atom := Atom) M v Γ))
+
+
+theorem quest_monotone {M : Type*} [PhaseSpace M] : Monotone (fun X : Fact M => (ʔ X : Fact M)) := by
+  intro X Y hXY
+  intro m hm
+  -- unfold membership in quest
+  -- reduce to set inclusion via antitonicity of orthogonal
+  have hYX : (Y⫠ ∩ I : Set M) ⊆ (X⫠ ∩ I : Set M) := by
+    intro p hp
+    refine And.intro ?_ hp.2
+    -- p ∈ Y⫠
+    -- use antitone of orthogonal
+    exact PhaseSpace.orth_antitone (X := (X : Set M)) (Y := (Y : Set M)) hXY hp.1
+  have hdual : (X⫠ ∩ I : Set M)⫠ ⊆ (Y⫠ ∩ I : Set M)⫠ := PhaseSpace.orth_antitone hYX
+  -- simplify hm and goal to use hdual
+  -- coe of quest is orthogonal of intersection
+  simpa [PhaseSpace.Fact.quest, PhaseSpace.dualFact] using hdual (by
+    simpa [PhaseSpace.Fact.quest, PhaseSpace.dualFact] using hm)
+
+theorem quest_closed_interpSequent {M : Type*} [PhaseSpace M] {v : Atom → Fact M} {Γ : Sequent Atom} {X : Fact M} : Γ.allQuest → X ≤ interpSequent (Atom:=Atom) M v Γ → (ʔ X) ≤ interpSequent (Atom:=Atom) M v Γ := by
+  intro hQ hX
+  have hmono := (quest_monotone (M := M))
+  have hXq : (ʔ X : Fact M) ≤ (ʔ (interpSequent (Atom := Atom) M v Γ) : Fact M) := by
+    exact hmono hX
+  have hclosed : (ʔ (interpSequent (Atom := Atom) M v Γ) : Fact M) ≤ interpSequent (Atom := Atom) M v Γ := by
+    exact quest_closed_of_allQuest (Atom := Atom) (M := M) (v := v) (Γ := Γ) hQ
+  exact le_trans hXq hclosed
+
+theorem quest_neg_pre {M : Type*} [PhaseSpace M] (G : Fact M) : (ʔ (Gᗮ) : Fact M) = ( ! G : Fact M)ᗮ := by
+  apply SetLike.coe_injective
+  -- Prove equality of carriers (sets)
+  calc
+    ((ʔ (Gᗮ) : Fact M) : Set M)
+        = (((Gᗮ : Set M)⫠ ∩ PhaseSpace.I (P := M)) : Set M)⫠ := by
+            simp only [Fact.quest, dualFact_coe]
+    _ = (((G : Set M)⫠⫠ ∩ PhaseSpace.I (P := M)) : Set M)⫠ := by
+            simp only [Fact.coe_neg]
+    _ = (((G : Set M) ∩ PhaseSpace.I (P := M)) : Set M)⫠ := by
+            -- use that `G` is a fact: (G : Set M) = (G : Set M)⫠⫠
+            simpa [PhaseSpace.isFact] using
+              congrArg (fun S : Set M => (S ∩ PhaseSpace.I (P := M))⫠) G.property.symm
+    _ = (( ! G : Fact M) : Set M)⫠ := by
+            simp only [Fact.bang, dualFact_coe, PhaseSpace.triple_orth]
+    _ = (( ! G : Fact M)ᗮ : Set M) := by
+            simp only [Fact.coe_neg]
+
+
+theorem bang_valid_of_allQuest {M : Type*} [PhaseSpace M] {v : Atom → Fact M} {a : Proposition Atom} {Γ : Sequent Atom} : Γ.allQuest → (interpProp (Atom:=Atom) (M:=M) v a ⅋ interpSequent (Atom:=Atom) M v Γ).IsValid → ((PhaseSpace.Fact.bang (interpProp (Atom:=Atom) (M:=M) v a)) ⅋ interpSequent (Atom:=Atom) M v Γ).IsValid := by
+  intro hallQuest hvalid
+  -- Step 1: from validity of par, get Gᗮ ≤ H
+  have hsub : (interpProp (Atom:=Atom) (M:=M) v a)ᗮ ≤ interpSequent (Atom:=Atom) M v Γ :=
+    (par_valid_iff_neg_le (G := interpProp (Atom:=Atom) (M:=M) v a)
+      (H := interpSequent (Atom:=Atom) M v Γ)).1 hvalid
+  -- Step 2: close under ? for allQuest context
+  have hquest : (ʔ ((interpProp (Atom:=Atom) (M:=M) v a)ᗮ) : Fact M) ≤ interpSequent (Atom:=Atom) M v Γ :=
+    quest_closed_interpSequent (Atom:=Atom) (M:=M) (v:=v) (Γ:=Γ)
+      (X := (interpProp (Atom:=Atom) (M:=M) v a)ᗮ) hallQuest hsub
+  -- Step 3: rewrite ?(Gᗮ) as (!G)ᗮ
+  have hbangneg : (( ! (interpProp (Atom:=Atom) (M:=M) v a) : Fact M)ᗮ) ≤ interpSequent (Atom:=Atom) M v Γ := by
+    -- use quest_neg_pre to rewrite
+    simpa [quest_neg_pre (M:=M) (G := interpProp (Atom:=Atom) (M:=M) v a)] using hquest
+  -- Step 4: conclude validity of (!G ⅋ H)
+  have hvalidBang : (( ! (interpProp (Atom:=Atom) (M:=M) v a) : Fact M) ⅋ interpSequent (Atom:=Atom) M v Γ).IsValid :=
+    (par_valid_iff_neg_le (G := ( ! (interpProp (Atom:=Atom) (M:=M) v a) : Fact M))
+      (H := interpSequent (Atom:=Atom) M v Γ)).2 hbangneg
+  -- Step 5: rewrite ! as PhaseSpace.Fact.bang
+  simpa using hvalidBang
+
+
 
 theorem quest_neg_set (M : Type*) [PhaseSpace M] (G : Fact M) :
 ((PhaseSpace.Fact.quest (P:=M) (Gᗮ) : Fact M) : Set M) =
