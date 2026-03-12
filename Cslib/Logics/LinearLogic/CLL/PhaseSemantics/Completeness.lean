@@ -22,6 +22,14 @@ universe u
 
 variable {Atom : Type u}
 
+instance parCommutative {M : Type*} [PhaseSpace M] :
+    Std.Commutative (α := Fact M) (· ⅋ ·) :=
+  ⟨par_comm⟩
+
+instance parAssociative {M : Type*} [PhaseSpace M] :
+    Std.Associative (α := Fact M) (· ⅋ ·) :=
+  ⟨fun _ _ _ => par_assoc⟩
+
 /-- Semantic interpretation of a sequent as the par-fold of its members. -/
 def interpSequent
     (M : Type*) [PhaseSpace M]
@@ -160,7 +168,10 @@ theorem bot_le_quest {M : Type*} [PhaseSpace M] (G : Fact M) :
     have hxm : x * m ∈ PhaseSpace.bot := (PhaseSpace.mem_one (P := M) (p := x)).1 hx1 m hm
     simpa [mul_comm] using hxm
 
-theorem bang_valid_of_allQuest {M : Type*} [PhaseSpace M] {v : Atom → Fact M} {a : Proposition Atom} {Γ : Sequent Atom} : Γ.allQuest → (interpProp (Atom:=Atom) (M:=M) v a ⅋ interpSequent (Atom:=Atom) M v Γ).IsValid → ((PhaseSpace.Fact.bang (interpProp (Atom:=Atom) (M:=M) v a)) ⅋ interpSequent (Atom:=Atom) M v Γ).IsValid := by
+theorem bang_valid_of_allQuest {M : Type*} [PhaseSpace M] {v : Atom → Fact M} {a : Proposition Atom}
+ {Γ : Sequent Atom} : Γ.allQuest → (interpProp (Atom:=Atom) (M:=M) v a ⅋ interpSequent (Atom:=Atom)
+ M v Γ).IsValid → ((PhaseSpace.Fact.bang (interpProp (Atom:=Atom) (M:=M) v a)) ⅋ interpSequent
+ (Atom:=Atom) M v Γ).IsValid := by
   -- Soundness of **promotion** in a `?`-context.
   --
   -- Goal after unfolding `Fact.IsValid` is membership `1 ∈ !⟦a⟧ ⅋ ⟦Γ⟧` assuming `1 ∈ ⟦a⟧ ⅋ ⟦Γ⟧` and `Γ.allQuest`.
